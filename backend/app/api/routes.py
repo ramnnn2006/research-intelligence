@@ -1,14 +1,15 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
+from typing import Optional
 from app.mcp.arxiv import ArxivMCP
 from app.mcp.semantic_scholar import SemanticScholarMCP
 from app.mcp.github import GitHubMCP
-from app.services.graph import build_knowledge_graph, build_citation_graph
+from app.services.graph import build_knowledge_graph, build_citation_graph, fetch_neo4j_subgraph
 from app.rag.vectorstore import add_papers, query as rag_query, count as rag_count
 from app.agents import research_agent as agent
 from app.db.database import (
     save_report, save_search, get_reports, get_searches,
-    get_report_by_id
+    get_report_by_id, get_neo4j_stats
 )
 
 router = APIRouter(prefix="/api")
@@ -163,7 +164,7 @@ def reports():
     return get_reports()
 
 @router.get("/reports/{rid}")
-def report(rid: int):
+def report(rid: str):
     r = get_report_by_id(rid)
     if not r:
         raise HTTPException(404, "Not found")
@@ -176,3 +177,17 @@ def searches():
 @router.get("/rag/count")
 def rag_size():
     return {"count": rag_count()}
+
+
+# ── Neo4j Database & Graph Intelligence Endpoints ─────────────────────────
+@router.get("/db/stats")
+@router.get("/graph/stats")
+def db_stats():
+    """Returns database telemetry, node counts, and relationship metrics."""
+    return get_neo4j_stats()
+
+@router.get("/graph/explore")
+def explore_graph(topic: Optional[str] = Query(default="", description="Topic to filter graph nodes"),
+                  limit: int = Query(default=30, ge=1, le=100)):
+    """Returns graph nodes and links queried directly from Neo4j."""
+    return fetch_neo4j_subgraph(topic=topic, limit=limit)

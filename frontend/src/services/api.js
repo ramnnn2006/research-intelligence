@@ -29,7 +29,10 @@ export const api = {
   compare:   (paper_a, paper_b)   => post('/compare',   { paper_a, paper_b }),
   chat:      (question, use_rag = false) => post('/chat', { question, use_rag }),
   roadmap:   (topic)              => post('/roadmap',   { topic }),
-  reports:   ()                   => get('/reports'),
-  searches:  ()                   => get('/searches'),
-  ragCount:  ()                   => get('/rag/count'),
+  reports:      ()                   => get('/reports'),
+  searches:     ()                   => get('/searches'),
+  ragCount:     ()                   => get('/rag/count'),
+  dbStats:      ()                   => get('/db/stats'),
+  exploreGraph: (topic = '', limit = 30) => get(`/graph/explore?topic=${encodeURIComponent(topic)}&limit=${limit}`),
 }
+
