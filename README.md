@@ -1,4 +1,4 @@
-# 🔬 ResearchIQ —MCP-Powered Research Intelligence Platform
+# 🔬 ResearchIQ — MCP-Powered Research Intelligence Platform with Neo4j
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue)
 ![FastAPI](https://img.shields.io/badge/FastAPI-Backend-green)
@@ -6,13 +6,13 @@
 ![Groq](https://img.shields.io/badge/Groq-Llama3-purple)
 ![MCP](https://img.shields.io/badge/MCP-Model%20Context%20Protocol-red)
 ![NetworkX](https://img.shields.io/badge/NetworkX-KnowledgeGraph-orange)
-![SQLite](https://img.shields.io/badge/SQLite-Database-blue)
+![Neo4j](https://img.shields.io/badge/Neo4j-NoSQL%20Graph%20Database-008CC1)
 
-ResearchIQ is a MCP-powered Research Intelligence Platform that enables researchers, students, and developers to discover, analyze, compare, and understand academic literature using AI.
+ResearchIQ is a MCP-powered Research Intelligence Platform that enables researchers, students, and developers to discover, analyze, compare, and understand academic literature using AI and native **Neo4j NoSQL Graph Database** persistence.
 
 The platform leverages the **Model Context Protocol (MCP)** to connect Large Language Models with external research systems such as **ArXiv**, **Semantic Scholar**, and **GitHub**, allowing the AI agent to retrieve real-time research knowledge before generating insights.
 
-By combining MCP servers, Retrieval-Augmented Generation (RAG), Knowledge Graphs, and Groq-powered LLMs, ResearchIQ transforms scattered research information into actionable intelligence through a single unified interface.
+By combining MCP servers, Retrieval-Augmented Generation (RAG), Knowledge Graphs, Groq-powered LLMs, and a native **Neo4j Graph Database**, ResearchIQ transforms scattered research information into actionable, interconnected graph intelligence through a single unified interface.
 
 ---
 
@@ -55,6 +55,18 @@ Benefits:
 * Reduced hallucinations
 * Source-grounded outputs
 * Extensible architecture
+
+---
+
+### 📊 Neo4j NoSQL Graph Database Persistence
+
+All research interactions, papers, authors, topics, repositories, searches, and generated reports are stored as a highly-connected knowledge graph in **Neo4j**:
+
+* **Paper Nodes**: Stores title, abstract, year, citations, url, and arxiv ID.
+* **Author Nodes**: Represents researchers and links via `[:AUTHORED]` to papers.
+* **Topic Nodes**: Groups research domains and links via `[:HAS_PAPER]` and `[:COVERS_TOPIC]`.
+* **Repository Nodes**: Tracks open-source implementations linked via `[:FOUND_REPO]`.
+* **Search & Report Nodes**: Maintains a history of queries and AI synthesis reports connected to their referenced artifacts.
 
 ---
 
@@ -112,7 +124,7 @@ Visualize relationships among:
 * Citations
 * Repositories
 
-Built using D3.js and NetworkX.
+Built using D3.js, NetworkX, and Neo4j graph queries.
 
 ---
 
@@ -159,7 +171,7 @@ Includes relevant papers and implementation repositories.
 
 ---
 
-### 🗄️ Research History
+### 🗄️ Research History & Analytics
 
 Stores:
 
@@ -169,7 +181,7 @@ Stores:
 * Gap Reports
 * Learning Roadmaps
 
-using SQLite persistence.
+using native **Neo4j Graph Database** persistence with automatic in-memory fallback support.
 
 ---
 
@@ -199,30 +211,30 @@ This makes ResearchIQ a true AI research copilot rather than a simple paper summ
 
 ---
 
-# 🏗️ MCP Architecture
+# 🏗️ Architecture
 
 ```text
                           User Query
                                │
                                ▼
 
-                  ┌─────────────────────┐
-                  │    React Frontend   │
-                  └──────────┬──────────┘
-                             │
-                             ▼
+                   ┌─────────────────────┐
+                   │    React Frontend   │
+                   └──────────┬──────────┘
+                              │
+                              ▼
 
-                  ┌─────────────────────┐
-                  │   FastAPI Backend   │
-                  └──────────┬──────────┘
-                             │
-                             ▼
+                   ┌─────────────────────┐
+                   │   FastAPI Backend   │
+                   └──────────┬──────────┘
+                              │
+                              ▼
 
-                  ┌─────────────────────┐
-                  │ Research AI Agent   │
-                  │ Groq Llama 3.3 70B  │
-                  └──────────┬──────────┘
-                             │
+                   ┌─────────────────────┐
+                   │ Research AI Agent   │
+                   │ Groq Llama 3.3 70B  │
+                   └──────────┬──────────┘
+                              │
 
         ┌────────────────────┼────────────────────┐
         │                    │                    │
@@ -246,24 +258,60 @@ This makes ResearchIQ a true AI research copilot rather than a simple paper summ
                 └────────┬─────────┘
                          │
 
-        ┌────────────────┴────────────────┐
-        ▼                                 ▼
+        ┌────────────────┼────────────────┐
+        ▼                ▼                ▼
 
- ┌─────────────────┐             ┌─────────────────┐
- │ Knowledge Graph │             │    RAG Store    │
- │   (NetworkX)    │             │ Context Engine  │
- └────────┬────────┘             └────────┬────────┘
-          │                               │
-          └──────────────┬────────────────┘
-                         ▼
+ ┌───────────────┐ ┌───────────────┐ ┌─────────────────┐
+ │Knowledge Graph│ │   RAG Store   │ │  Neo4j NoSQL    │
+ │  (NetworkX)   │ │Context Engine │ │ Graph Database  │
+ └───────┬───────┘ └───────┬───────┘ └────────┬────────┘
+         │                 │                  │
+         └─────────────────┼──────────────────┘
+                           ▼
 
-                ┌──────────────────┐
-                │ Insight Engine   │
-                └────────┬─────────┘
-                         ▼
+                 ┌──────────────────┐
+                 │ Insight Engine   │
+                 └────────┬─────────┘
+                          ▼
 
-       Reviews • Surveys • Gaps • Chat • Roadmaps
+        Reviews • Surveys • Gaps • Chat • Roadmaps
 ```
+
+---
+
+# 🕸️ Neo4j Graph Data Model
+
+```text
+    (:Author) ──[:AUTHORED]──► (:Paper) ◄──[:FOUND_PAPER]── (:Search)
+                                  ▲
+                                  │ [:INCLUDES_PAPER]
+                                  │
+    (:Topic)  ◄──[:COVERS_TOPIC]─ (:Report) ──[:INCLUDES_REPO]──► (:Repository)
+       ▲                                                               ▲
+       │                                                               │
+       └────────────────────────[:HAS_PAPER]───────────────────────────┘
+```
+
+### Useful Cypher Queries:
+
+* **Find Top Authors in Knowledge Base**:
+  ```cypher
+  MATCH (a:Author)-[:AUTHORED]->(p:Paper)
+  RETURN a.name AS author, count(p) AS papers_authored
+  ORDER BY papers_authored DESC LIMIT 10;
+  ```
+
+* **Find Papers connected to a Topic**:
+  ```cypher
+  MATCH (t:Topic {name: "quantum computing"})-[:HAS_PAPER]->(p:Paper)
+  RETURN p.title, p.year, p.citations ORDER BY p.citations DESC;
+  ```
+
+* **Inspect Reports & Connected Artifacts**:
+  ```cypher
+  MATCH (r:Report)-[:INCLUDES_PAPER]->(p:Paper)
+  RETURN r.topic, r.report_type, collect(p.title) AS papers;
+  ```
 
 ---
 
@@ -292,10 +340,10 @@ Groq LLM Analysis
 Review / Survey / Gap Detection
       │
       ▼
-SQLite Persistence
+Neo4j Graph Database Persistence
       │
       ▼
-Interactive Insights
+Interactive Insights & Graph Analytics
 ```
 
 ---
@@ -346,21 +394,21 @@ Interactive Insights
 
 # 🛠️ Tech Stack
 
-| Component        | Technology                      |
-| ---------------- | ------------------------------- |
-| Frontend         | React, Vite                     |
-| Backend          | FastAPI                         |
-| Language         | Python                          |
-| LLM              | Llama 3.3 70B                   |
-| Inference        | Groq                            |
-| Protocol         | Model Context Protocol (MCP)    |
-| Knowledge Graph  | NetworkX                        |
-| Visualization    | D3.js                           |
-| Database         | SQLite                          |
-| APIs             | ArXiv, Semantic Scholar, GitHub |
-| Async Processing | aiohttp                         |
-| Validation       | Pydantic                        |
-| RAG Engine       | Custom Context Retrieval        |
+| Component        | Technology                          |
+| ---------------- | ----------------------------------- |
+| Frontend         | React, Vite                         |
+| Backend          | FastAPI                             |
+| Language         | Python                              |
+| LLM              | Llama 3.3 70B                       |
+| Inference        | Groq                                |
+| Protocol         | Model Context Protocol (MCP)        |
+| Knowledge Graph  | NetworkX                            |
+| Visualization    | D3.js                               |
+| Database (NoSQL) | **Neo4j Graph Database** (Cypher)   |
+| APIs             | ArXiv, Semantic Scholar, GitHub     |
+| Async Processing | aiohttp                             |
+| Validation       | Pydantic                            |
+| RAG Engine       | Custom Context Retrieval            |
 
 ---
 
@@ -379,8 +427,12 @@ research-intelligence-platform/
 │   │   │   └── github.py
 │   │   │
 │   │   ├── services/
+│   │   │   └── graph.py
 │   │   ├── rag/
+│   │   │   └── vectorstore.py
 │   │   └── db/
+│   │       ├── database.py
+│   │       └── neo4j_client.py
 │   │
 │   └── requirements.txt
 │
@@ -401,28 +453,45 @@ research-intelligence-platform/
 │   ├── paper-compare.png
 │   └── chat.png
 │
-├── data/
+├── docker-compose.yml
 ├── run.py
 ├── README.md
+├── requirements.txt
 ├── .env.example
 └── .gitignore
 ```
 
 ---
 
-# ⚙️ Installation
+# ⚙️ Installation & Setup
 
 ## 1️⃣ Clone Repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/research-intelligence-platform.git
+git clone https://github.com/ramnnn2006/research-intelligence.git
 
-cd research-intelligence-platform
+cd research-intelligence
 ```
 
 ---
 
-## 2️⃣ Create Virtual Environment
+## 2️⃣ Start Neo4j Graph Database (Docker)
+
+Start Neo4j Community Edition using Docker Compose:
+
+```bash
+docker-compose up -d
+```
+
+* **Neo4j Browser**: `http://localhost:7474`
+* **Bolt Protocol**: `bolt://localhost:7687`
+* **Default Credentials**: Username `neo4j`, Password `research123`
+
+*(Note: If Neo4j is not running, the application gracefully operates using built-in in-memory fallback storage).*
+
+---
+
+## 3️⃣ Create Virtual Environment
 
 ### Windows
 
@@ -442,7 +511,7 @@ source venv/bin/activate
 
 ---
 
-## 3️⃣ Install Backend Dependencies
+## 4️⃣ Install Backend Dependencies
 
 ```bash
 pip install -r backend/requirements.txt
@@ -450,7 +519,7 @@ pip install -r backend/requirements.txt
 
 ---
 
-## 4️⃣ Install Frontend Dependencies
+## 5️⃣ Install Frontend Dependencies
 
 ```bash
 cd frontend
@@ -464,22 +533,31 @@ cd ..
 
 ---
 
-## 5️⃣ Configure Environment Variables
+## 6️⃣ Configure Environment Variables
 
-Create a `.env` file:
+Create a `.env` file from the example template:
+
+```bash
+cp .env.example .env
+```
+
+Set your keys in `.env`:
 
 ```env
 GROQ_API_KEY=your_groq_api_key
+NEO4J_URI=bolt://localhost:7687
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=research123
+NEO4J_DATABASE=neo4j
 GITHUB_TOKEN=optional
 ```
 
-Get a free API key from:
-
+Get a free Groq API key from:
 https://console.groq.com
 
 ---
 
-## 6️⃣ Run the Application
+## 7️⃣ Run the Application
 
 ```bash
 python run.py
