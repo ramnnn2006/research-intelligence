@@ -141,7 +141,6 @@ class Neo4jClient:
 
         constraints = [
             "CREATE CONSTRAINT paper_id_uniq IF NOT EXISTS FOR (p:Paper) REQUIRE p.id IS UNIQUE",
-            "CREATE CONSTRAINT paper_arxiv_uniq IF NOT EXISTS FOR (p:Paper) REQUIRE p.arxiv_id IS UNIQUE",
             "CREATE CONSTRAINT author_name_uniq IF NOT EXISTS FOR (a:Author) REQUIRE a.name IS UNIQUE",
             "CREATE CONSTRAINT repo_name_uniq IF NOT EXISTS FOR (r:Repository) REQUIRE r.name IS UNIQUE",
             "CREATE CONSTRAINT topic_name_uniq IF NOT EXISTS FOR (t:Topic) REQUIRE t.name IS UNIQUE",

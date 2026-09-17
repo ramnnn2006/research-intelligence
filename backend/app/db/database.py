@@ -15,13 +15,17 @@ def init_db():
     init_neo4j_schema()
 
 def _clean_paper(p: dict) -> dict:
+    aid = str(p.get("arxiv_id") or "")
+    pid = str(p.get("id") or "")
+    if not aid and "arxiv.org/abs/" in pid:
+        aid = pid.split("arxiv.org/abs/")[-1].strip()
     return {
-        "id": str(p.get("id") or p.get("arxiv_id") or p.get("title", "")[:60]),
-        "arxiv_id": str(p.get("arxiv_id") or ""),
+        "id": str(pid or aid or p.get("title", "")[:60]),
+        "arxiv_id": aid if aid else None,
         "title": str(p.get("title") or "")[:250],
         "abstract": str(p.get("summary") or p.get("abstract") or "")[:3000],
         "year": str(p.get("year") or ""),
-        "url": str(p.get("url") or ""),
+        "url": str(p.get("url") or pid or ""),
         "source": str(p.get("source") or "unknown"),
         "citations": int(p.get("citations") or 0),
         "authors": [str(a).strip() for a in (p.get("authors") or []) if str(a).strip()]
