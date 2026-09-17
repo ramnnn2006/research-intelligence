@@ -191,3 +191,47 @@ def explore_graph(topic: Optional[str] = Query(default="", description="Topic to
                   limit: int = Query(default=30, ge=1, le=100)):
     """Returns graph nodes and links queried directly from Neo4j."""
     return fetch_neo4j_subgraph(topic=topic, limit=limit)
+
+
+# ── Neo4j Explicit CRUD Endpoints ──────────────────────────────────────────
+class CreatePaperReq(BaseModel):
+    id: Optional[str] = None
+    arxiv_id: Optional[str] = None
+    title: str
+    abstract: Optional[str] = ""
+    year: Optional[str] = ""
+    citations: Optional[int] = 0
+    url: Optional[str] = ""
+    authors: Optional[list] = []
+    topic: Optional[str] = ""
+
+class UpdateCitationsReq(BaseModel):
+    paper_id: str
+    citations: int
+
+@router.post("/db/crud/create")
+def crud_create_paper(req: CreatePaperReq):
+    from app.db.crud import create_paper_node
+    return create_paper_node(req.model_dump())
+
+@router.get("/db/crud/read/{paper_id}")
+def crud_read_paper(paper_id: str):
+    from app.db.crud import read_paper_node
+    paper = read_paper_node(paper_id)
+    if not paper:
+        raise HTTPException(status_code=404, detail="Paper not found in Neo4j")
+    return paper
+
+@router.put("/db/crud/update")
+def crud_update_paper(req: UpdateCitationsReq):
+    from app.db.crud import update_paper_citations
+    res = update_paper_citations(req.paper_id, req.citations)
+    if not res:
+        raise HTTPException(status_code=404, detail="Paper not found to update")
+    return res
+
+@router.delete("/db/crud/delete/{paper_id}")
+def crud_delete_paper(paper_id: str):
+    from app.db.crud import delete_paper_node
+    return delete_paper_node(paper_id)
+
