@@ -1,0 +1,903 @@
+{
+  "metadata": {
+    "database": "Neo4j Community Edition 5.18.0",
+    "protocol": "bolt://localhost:7687",
+    "timestamp": "2026-09-20 20:50:23"
+  },
+  "crud_operations": {
+    "Create": {
+      "operation": "CREATE / MERGE (:Paper) with Authors and Topic",
+      "output": {
+        "id": "live_crud_demo_paper_2026",
+        "title": "Autonomous Multi-Agent Citation Graph Reasoning with Neo4j",
+        "citations": 12,
+        "year": "2026"
+      },
+      "latency_ms": 182.58
+    },
+    "Read": {
+      "operation": "MATCH (:Paper) with authors and relationships",
+      "output": {
+        "topic": "Graph Neural Networks",
+        "id": "live_crud_demo_paper_2026",
+        "abstract": "We evaluate high-throughput graph queries across interconnected literature networks.",
+        "authors": [
+          "Ramakrishnan P H",
+          "Raveena V",
+          "Yuvan Aadheraj K"
+        ],
+        "title": "Autonomous Multi-Agent Citation Graph Reasoning with Neo4j",
+        "repositories": [
+          {
+            "stars": null,
+            "name": null,
+            "url": null
+          }
+        ],
+        "citations": 12,
+        "source": "manual_entry",
+        "arxiv_id": "2409.99999",
+        "year": "2026",
+        "in_degree_citations": 0,
+        "url": ""
+      },
+      "latency_ms": 284.35
+    },
+    "Update": {
+      "operation": "SET p.citations = $new_citations, p.updated_at = datetime()",
+      "output": {
+        "id": "live_crud_demo_paper_2026",
+        "title": "Autonomous Multi-Agent Citation Graph Reasoning with Neo4j",
+        "citations": 64,
+        "updated_at": "2026-09-20T15:20:23.642Z"
+      },
+      "latency_ms": 20.87
+    },
+    "Delete": {
+      "operation": "DETACH DELETE p",
+      "output": {
+        "deleted_count": 1,
+        "deleted_title": "Autonomous Multi-Agent Citation Graph Reasoning with Neo4j"
+      },
+      "latency_ms": 27.37
+    }
+  },
+  "domain_queries": {
+    "Query_1_Multi_Hop_Citations": {
+      "name": "2-Hop & Multi-Hop Citation Path Discovery",
+      "results": [],
+      "latency_ms": 34.58
+    },
+    "Query_2_Coauthorship": {
+      "name": "Co-Authorship Collaboration Network",
+      "results": [
+        {
+          "author_1": "Hidekata Hontani",
+          "author_2": "Ichiro Takeuchi",
+          "shared_papers": 1,
+          "sample_papers": [
+            "Transformer-based Personalized Attention Mechanism for Medical Images with Clinical Records"
+          ]
+        },
+        {
+          "author_1": "Koichi Ohshima",
+          "author_2": "Ichiro Takeuchi",
+          "shared_papers": 1,
+          "sample_papers": [
+            "Transformer-based Personalized Attention Mechanism for Medical Images with Clinical Records"
+          ]
+        },
+        {
+          "author_1": "Hiroaki Miyoshi",
+          "author_2": "Ichiro Takeuchi",
+          "shared_papers": 1,
+          "sample_papers": [
+            "Transformer-based Personalized Attention Mechanism for Medical Images with Clinical Records"
+          ]
+        },
+        {
+          "author_1": "Hiroki Masuda",
+          "author_2": "Ichiro Takeuchi",
+          "shared_papers": 1,
+          "sample_papers": [
+            "Transformer-based Personalized Attention Mechanism for Medical Images with Clinical Records"
+          ]
+        },
+        {
+          "author_1": "Yusuke Takagi",
+          "author_2": "Ichiro Takeuchi",
+          "shared_papers": 1,
+          "sample_papers": [
+            "Transformer-based Personalized Attention Mechanism for Medical Images with Clinical Records"
+          ]
+        }
+      ],
+      "latency_ms": 31.47
+    },
+    "Query_3_Paper_Code_Matching": {
+      "name": "Paper to Code Implementation Matching",
+      "results": [
+        {
+          "paper_title": "Making Large Language Models Better Reasoners with Alignment",
+          "topic": "Large Language Models",
+          "github_repo": "mlabonne/llm-course",
+          "repo_url": "https://github.com/mlabonne/llm-course",
+          "stars": 83043
+        },
+        {
+          "paper_title": "Is Self-knowledge and Action Consistent or Not: Investigating Large Language Model's Personality",
+          "topic": "Large Language Models",
+          "github_repo": "mlabonne/llm-course",
+          "repo_url": "https://github.com/mlabonne/llm-course",
+          "stars": 83043
+        },
+        {
+          "paper_title": "Enhancing Human-Like Responses in Large Language Models",
+          "topic": "Large Language Models",
+          "github_repo": "mlabonne/llm-course",
+          "repo_url": "https://github.com/mlabonne/llm-course",
+          "stars": 83043
+        },
+        {
+          "paper_title": "Self-Cognition in Large Language Models: An Exploratory Study",
+          "topic": "Large Language Models",
+          "github_repo": "mlabonne/llm-course",
+          "repo_url": "https://github.com/mlabonne/llm-course",
+          "stars": 83043
+        },
+        {
+          "paper_title": "Unmasking the Shadows of AI: Investigating Deceptive Capabilities in Large Language Models",
+          "topic": "Large Language Models",
+          "github_repo": "mlabonne/llm-course",
+          "repo_url": "https://github.com/mlabonne/llm-course",
+          "stars": 83043
+        },
+        {
+          "paper_title": "Mask-Attention-Free Transformer for 3D Instance Segmentation",
+          "topic": "Attention Mechanism Transformer",
+          "github_repo": "The-AI-Summer/self-attention-cv",
+          "repo_url": "https://github.com/The-AI-Summer/self-attention-cv",
+          "stars": 1215
+        }
+      ],
+      "latency_ms": 177.36
+    },
+    "Query_4_Indegree_Centrality": {
+      "name": "Top Landmark Papers by In-Degree Centrality",
+      "results": [
+        {
+          "id": "http://arxiv.org/abs/2209.15001v3",
+          "title": "Dilated Neighborhood Attention Transformer",
+          "year": "2022",
+          "in_degree_citations": 0,
+          "declared_citations": 0
+        },
+        {
+          "id": "http://arxiv.org/abs/1809.04281v3",
+          "title": "Music Transformer",
+          "year": "2018",
+          "in_degree_citations": 0,
+          "declared_citations": 0
+        },
+        {
+          "id": "http://arxiv.org/abs/2002.00741v1",
+          "title": "D\u00e9j\u00e0 vu: A Contextualized Temporal Attention Mechanism for Sequential Recommendation",
+          "year": "2020",
+          "in_degree_citations": 0,
+          "declared_citations": 0
+        },
+        {
+          "id": "http://arxiv.org/abs/2605.26355v1",
+          "title": "Energy-Gated Attention and Wavelet Positional Encoding: Complementary Inductive Biases for Transformer Attention",
+          "year": "2026",
+          "in_degree_citations": 0,
+          "declared_citations": 0
+        },
+        {
+          "id": "http://arxiv.org/abs/2309.01692v1",
+          "title": "Mask-Attention-Free Transformer for 3D Instance Segmentation",
+          "year": "2023",
+          "in_degree_citations": 0,
+          "declared_citations": 0
+        },
+        {
+          "id": "http://arxiv.org/abs/2206.03003v2",
+          "title": "Transformer-based Personalized Attention Mechanism for Medical Images with Clinical Records",
+          "year": "2022",
+          "in_degree_citations": 0,
+          "declared_citations": 0
+        }
+      ],
+      "latency_ms": 20.52
+    },
+    "Query_5_Topic_Subgraph": {
+      "name": "Topic Subgraph Extraction for Literature Reviews",
+      "results": [
+        {
+          "title": "Synthesis of Mechanism for single- and hybrid-tasks using Differential Evolution",
+          "year": "2011",
+          "abstract": "The optimal dimensional synthesis for planar mechanisms using differential evolution (DE) is demonstrated. Four examples are included: in the first case, the synthesis of a mechanism for hybrid-tasks, considering path generation, function generation, and motion generation, is carried out. The second and third cases pertain to path generation, with and without prescribed timing. Finally, the synthesis of an Ackerman mechanism is reported. Order defect problem is solved by manipulating individuals instead of penalizing or discretizing the search space for the parameters. A technique that consists in applying a transformation in order to satisfy the Grashof and crank conditions to generate an initial elitist population is introduced. As a result, the evolutionary algorithm increases its efficiency.",
+          "citations": 0,
+          "key_authors": [
+            "R. Peon-Escalante",
+            "F. Penunuri",
+            "C. Villanueva",
+            "D. Pech-Oy"
+          ],
+          "code_implementations": [
+            "cedrickchee/awesome-transformer-nlp",
+            "changzy00/pytorch-attention",
+            "The-AI-Summer/self-attention-cv",
+            "takara-ai/go-attention",
+            "lucidrains/En-transformer"
+          ]
+        },
+        {
+          "title": "Dilated Neighborhood Attention Transformer",
+          "year": "2022",
+          "abstract": "Transformers are quickly becoming one of the most heavily applied deep learning architectures across modalities, domains, and tasks. In vision, on top of ongoing efforts into plain transformers, hierarchical transformers have also gained significant attention, thanks to their performance and easy integration into existing frameworks. These models typically employ localized attention mechanisms, such as the sliding-window Neighborhood Attention (NA) or Swin Transformer's Shifted Window Self Attention. While effective at reducing self attention's quadratic complexity, local attention weakens two of the most desirable properties of self attention: long range inter-dependency modeling, and global receptive field. In this paper, we introduce Dilated Neighborhood Attention (DiNA), a natural, flexible and efficient extension to NA that can capture more global context and expand receptive fields exponentially at no additional cost. NA's local attention and DiNA's sparse global attention complement each other, and therefore we introduce Dilated Neighborhood Attention Transformer (DiNAT), a new hierarchical vision transformer built upon both. DiNAT variants enjoy significant improvements over strong baselines such as NAT, Swin, and ConvNeXt. Our large model is faster and ahead of its Swin counterpart by 1.6% box AP in COCO object detection, 1.4% mask AP in COCO instance segmentation, and 1.4% mIoU in ADE20K semantic segmentation. Paired with new frameworks, our large variant is the new state of the art panoptic segmentation model on COCO (58.5 PQ) and ADE20K (49.4 PQ), and instance segmentation model on Cityscapes (45.1 AP) and ADE20K (35.4 AP) (no extra data). It also matches the state of the art specialized semantic segmentation models on ADE20K (58.1 mIoU), and ranks second on Cityscapes (84.5 mIoU) (no extra data).",
+          "citations": 0,
+          "key_authors": [
+            "Humphrey Shi",
+            "Ali Hassani"
+          ],
+          "code_implementations": [
+            "cedrickchee/awesome-transformer-nlp",
+            "The-AI-Summer/self-attention-cv",
+            "takara-ai/go-attention",
+            "lucidrains/En-transformer",
+            "changzy00/pytorch-attention"
+          ]
+        },
+        {
+          "title": "Mask-Attention-Free Transformer for 3D Instance Segmentation",
+          "year": "2023",
+          "abstract": "Recently, transformer-based methods have dominated 3D instance segmentation, where mask attention is commonly involved. Specifically, object queries are guided by the initial instance masks in the first cross-attention, and then iteratively refine themselves in a similar manner. However, we observe that the mask-attention pipeline usually leads to slow convergence due to low-recall initial instance masks. Therefore, we abandon the mask attention design and resort to an auxiliary center regression task instead. Through center regression, we effectively overcome the low-recall issue and perform cross-attention by imposing positional prior. To reach this goal, we develop a series of position-aware designs. First, we learn a spatial distribution of 3D locations as the initial position queries. They spread over the 3D space densely, and thus can easily capture the objects in a scene with a high recall. Moreover, we present relative position encoding for the cross-attention and iterative refinement for more accurate position queries. Experiments show that our approach converges 4x faster than existing work, sets a new state of the art on ScanNetv2 3D instance segmentation benchmark, and also demonstrates superior performance across various datasets. Code and models are available at https://github.com/dvlab-research/Mask-Attention-Free-Transformer.",
+          "citations": 0,
+          "key_authors": [
+            "Jiaya Jia",
+            "Ruihang Chu",
+            "Han Hu",
+            "Xin Lai"
+          ],
+          "code_implementations": [
+            "The-AI-Summer/self-attention-cv",
+            "takara-ai/go-attention",
+            "lucidrains/En-transformer",
+            "changzy00/pytorch-attention",
+            "cedrickchee/awesome-transformer-nlp"
+          ]
+        },
+        {
+          "title": "Attention Guided CAM: Visual Explanations of Vision Transformer Guided by Self-Attention",
+          "year": "2024",
+          "abstract": "Vision Transformer(ViT) is one of the most widely used models in the computer vision field with its great performance on various tasks. In order to fully utilize the ViT-based architecture in various applications, proper visualization methods with a decent localization performance are necessary, but these methods employed in CNN-based models are still not available in ViT due to its unique structure. In this work, we propose an attention-guided visualization method applied to ViT that provides a high-level semantic explanation for its decision. Our method selectively aggregates the gradients directly propagated from the classification output to each self-attention, collecting the contribution of image features extracted from each location of the input image. These gradients are additionally guided by the normalized self-attention scores, which are the pairwise patch correlation scores. They are used to supplement the gradients on the patch-level context information efficiently detected by the self-attention mechanism. This approach of our method provides elaborate high-level semantic explanations with great localization performance only with the class labels. As a result, our method outperforms the previous leading explainability methods of ViT in the weakly-supervised localization task and presents great capability in capturing the full instances of the target class object. Meanwhile, our method provides a visualization that faithfully explains the model, which is demonstrated in the perturbation comparison test.",
+          "citations": 0,
+          "key_authors": [
+            "Hyunseok Seo",
+            "Saebom Leem"
+          ],
+          "code_implementations": [
+            "takara-ai/go-attention",
+            "cedrickchee/awesome-transformer-nlp",
+            "changzy00/pytorch-attention",
+            "lucidrains/En-transformer",
+            "The-AI-Summer/self-attention-cv"
+          ]
+        },
+        {
+          "title": "D\u00e9j\u00e0 vu: A Contextualized Temporal Attention Mechanism for Sequential Recommendation",
+          "year": "2020",
+          "abstract": "Predicting users' preferences based on their sequential behaviors in history is challenging and crucial for modern recommender systems. Most existing sequential recommendation algorithms focus on transitional structure among the sequential actions, but largely ignore the temporal and context information, when modeling the influence of a historical event to current prediction.   In this paper, we argue that the influence from the past events on a user's current action should vary over the course of time and under different context. Thus, we propose a Contextualized Temporal Attention Mechanism that learns to weigh historical actions' influence on not only what action it is, but also when and how the action took place. More specifically, to dynamically calibrate the relative input dependence from the self-attention mechanism, we deploy multiple parameterized kernel functions to learn various temporal dynamics, and then use the context information to determine which of these reweighing kernels to follow for each input. In empirical evaluations on two large public recommendation datasets, our model consistently outperformed an extensive set of state-of-the-art sequential recommendation methods.",
+          "citations": 0,
+          "key_authors": [
+            "Hongning Wang",
+            "Renqin Cai",
+            "Jibang Wu"
+          ],
+          "code_implementations": [
+            "cedrickchee/awesome-transformer-nlp",
+            "lucidrains/En-transformer",
+            "takara-ai/go-attention",
+            "changzy00/pytorch-attention",
+            "The-AI-Summer/self-attention-cv"
+          ]
+        }
+      ],
+      "latency_ms": 270.18
+    },
+    "Query_6_Research_Gaps": {
+      "name": "Research Gap Discovery Across Disciplines",
+      "results": {
+        "domain_a": "Attention Mechanism Transformer",
+        "domain_b": "Graph Neural Networks",
+        "cross_citations": 0,
+        "gap_status": "HIGH_RESEARCH_GAP_POTENTIAL"
+      },
+      "latency_ms": 145.81
+    },
+    "Query_7_Search_History": {
+      "name": "Search Query History & Discovered Paper Links",
+      "results": [
+        {
+          "search_id": "596e4e3d",
+          "query_text": "Deep Reinforcement Learning",
+          "timestamp": "2026-09-20T15:19:41.763648+00:00",
+          "total_papers": 8,
+          "sample_papers": [
+            "The Open Ant: A Robot Platform for Reinforcement Learning Research",
+            "Biologically inspired architectures for sample-efficient deep reinforcement learning",
+            "Learn to Accumulate Evidence from All Training Samples: Theory and Practice"
+          ]
+        },
+        {
+          "search_id": "347794eb",
+          "query_text": "Retrieval Augmented Generation",
+          "timestamp": "2026-09-20T15:19:38.214699+00:00",
+          "total_papers": 8,
+          "sample_papers": [
+            "Designing AI Systems that Augment Human Performed vs. Demonstrated Critical Thinking",
+            "EHR-RAGp: Retrieval-Augmented Prototype-Guided Foundation Model for Electronic Health Records",
+            "Riddle Me This! Stealthy Membership Inference for Retrieval-Augmented Generation"
+          ]
+        },
+        {
+          "search_id": "ae12b11b",
+          "query_text": "Diffusion Models",
+          "timestamp": "2026-09-20T15:19:33.703437+00:00",
+          "total_papers": 8,
+          "sample_papers": [
+            "Video Diffusion Models: A Survey",
+            "Controllable Generation with Text-to-Image Diffusion Models: A Survey",
+            "Diffusion in LanCoIn3n+2 phases studied by perturbed angular correlation"
+          ]
+        },
+        {
+          "search_id": "56091c54",
+          "query_text": "Graph Neural Networks",
+          "timestamp": "2026-09-20T15:19:30.227166+00:00",
+          "total_papers": 8,
+          "sample_papers": [
+            "The Deep Arbitrary Polynomial Chaos Neural Network or how Deep Artificial Neural Networks could benefit from Data-Driven Homogeneous Chaos Theory",
+            "Hierarchical Attentional Hybrid Neural Networks for Document Classification",
+            "A Review on Neural Network Models of Schizophrenia and Autism Spectrum Disorder"
+          ]
+        },
+        {
+          "search_id": "c6108eb8",
+          "query_text": "Large Language Models",
+          "timestamp": "2026-09-20T15:19:21.759815+00:00",
+          "total_papers": 8,
+          "sample_papers": [
+            "Is Self-knowledge and Action Consistent or Not: Investigating Large Language Model's Personality",
+            "Self-Cognition in Large Language Models: An Exploratory Study",
+            "Unmasking the Shadows of AI: Investigating Deceptive Capabilities in Large Language Models"
+          ]
+        }
+      ],
+      "latency_ms": 18.59
+    },
+    "Query_8_Report_Grounding": {
+      "name": "Report Grounding Verification",
+      "results": [
+        {
+          "report_id": "b4c00729",
+          "topic": "Deep Reinforcement Learning",
+          "type": "Literature Review",
+          "grounding_papers": [
+            "Deep Reinforcement Learning: An Overview",
+            "Learn to Accumulate Evidence from All Training Samples: Theory and Practice",
+            "Biologically inspired architectures for sample-efficient deep reinforcement learning",
+            "Comparing Deep Reinforcement Learning and Evolutionary Methods in Continuous Control"
+          ],
+          "code_repos": [
+            "openai/spinningup",
+            "Unity-Technologies/ml-agents",
+            "kmario23/deep-learning-drizzle",
+            "labmlai/annotated_deep_learning_paper_implementations",
+            "thu-ml/tianshou"
+          ]
+        },
+        {
+          "report_id": "7703b296",
+          "topic": "Retrieval Augmented Generation",
+          "type": "Literature Review",
+          "grounding_papers": [
+            "Riddle Me This! Stealthy Membership Inference for Retrieval-Augmented Generation",
+            "Designing AI Systems that Augment Human Performed vs. Demonstrated Critical Thinking",
+            "AR-RAG: Autoregressive Retrieval Augmentation for Image Generation",
+            "EVOR: Evolving Retrieval for Code Generation"
+          ],
+          "code_repos": [
+            "NirDiamant/RAG_Techniques",
+            "infiniflow/ragflow",
+            "SciPhi-AI/R2R",
+            "microsoft/graphrag",
+            "HKUDS/LightRAG"
+          ]
+        },
+        {
+          "report_id": "c7e1e3cf",
+          "topic": "Diffusion Models",
+          "type": "Literature Review",
+          "grounding_papers": [
+            "Controllable Generation with Text-to-Image Diffusion Models: A Survey",
+            "Diffusion in LanCoIn3n+2 phases studied by perturbed angular correlation",
+            "Video Diffusion Models: A Survey",
+            "Antithetic Noise in Diffusion Models"
+          ],
+          "code_repos": [
+            "huggingface/diffusers",
+            "sgl-project/sglang",
+            "CompVis/stable-diffusion",
+            "unslothai/unsloth",
+            "Comfy-Org/ComfyUI"
+          ]
+        },
+        {
+          "report_id": "a6371f47",
+          "topic": "Graph Neural Networks",
+          "type": "Literature Review",
+          "grounding_papers": [
+            "A Neural Network-Evolutionary Computational Framework for Remaining Useful Life Estimation of Mechanical Systems",
+            "Hierarchical Attentional Hybrid Neural Networks for Document Classification",
+            "MECCH: Metapath Context Convolution-based Heterogeneous Graph Neural Networks",
+            "Interpretable and Fair Generalized Additive Neural Networks via Multi-objective Learning"
+          ],
+          "code_repos": [
+            "graphdeeplearning/benchmarking-gnns",
+            "thunlp/GNNPapers",
+            "danielegrattarola/spektral",
+            "pyg-team/pytorch_geometric",
+            "magicleap/SuperGluePretrainedNetwork"
+          ]
+        },
+        {
+          "report_id": "b654758d",
+          "topic": "Large Language Models",
+          "type": "Literature Review",
+          "grounding_papers": [
+            "Enhancing Human-Like Responses in Large Language Models",
+            "Making Large Language Models Better Reasoners with Alignment",
+            "Unmasking the Shadows of AI: Investigating Deceptive Capabilities in Large Language Models",
+            "Is Self-knowledge and Action Consistent or Not: Investigating Large Language Model's Personality"
+          ],
+          "code_repos": [
+            "yamadashy/repomix",
+            "sgl-project/sglang",
+            "lm-sys/FastChat",
+            "HandsOnLLM/Hands-On-Large-Language-Models",
+            "mlabonne/llm-course"
+          ]
+        }
+      ],
+      "latency_ms": 18.49
+    }
+  },
+  "aggregations": {
+    "Topic_Citation_Distribution": {
+      "name": "Topic-Wise Citation Volume & Average Distribution",
+      "results": [
+        {
+          "topic": "Attention Mechanism Transformer",
+          "paper_count": 8,
+          "total_citations": 0,
+          "avg_citations": 0.0
+        },
+        {
+          "topic": "Large Language Models",
+          "paper_count": 8,
+          "total_citations": 0,
+          "avg_citations": 0.0
+        },
+        {
+          "topic": "Graph Neural Networks",
+          "paper_count": 8,
+          "total_citations": 0,
+          "avg_citations": 0.0
+        },
+        {
+          "topic": "Diffusion Models",
+          "paper_count": 8,
+          "total_citations": 0,
+          "avg_citations": 0.0
+        },
+        {
+          "topic": "Retrieval Augmented Generation",
+          "paper_count": 8,
+          "total_citations": 0,
+          "avg_citations": 0.0
+        },
+        {
+          "topic": "Deep Reinforcement Learning",
+          "paper_count": 8,
+          "total_citations": 0,
+          "avg_citations": 0.0
+        }
+      ],
+      "latency_ms": 88.42
+    },
+    "Author_Productivity_Ranking": {
+      "name": "Author Productivity & Influence Ranking",
+      "results": [
+        {
+          "author": "Ichiro Takeuchi",
+          "papers_authored": 1,
+          "total_citations": 0,
+          "top_works": [
+            "Transformer-based Personalized Attention Mechanism for Medical Images with Clinical Records"
+          ]
+        },
+        {
+          "author": "Hidekata Hontani",
+          "papers_authored": 1,
+          "total_citations": 0,
+          "top_works": [
+            "Transformer-based Personalized Attention Mechanism for Medical Images with Clinical Records"
+          ]
+        },
+        {
+          "author": "Koichi Ohshima",
+          "papers_authored": 1,
+          "total_citations": 0,
+          "top_works": [
+            "Transformer-based Personalized Attention Mechanism for Medical Images with Clinical Records"
+          ]
+        },
+        {
+          "author": "Hiroaki Miyoshi",
+          "papers_authored": 1,
+          "total_citations": 0,
+          "top_works": [
+            "Transformer-based Personalized Attention Mechanism for Medical Images with Clinical Records"
+          ]
+        },
+        {
+          "author": "Hiroki Masuda",
+          "papers_authored": 1,
+          "total_citations": 0,
+          "top_works": [
+            "Transformer-based Personalized Attention Mechanism for Medical Images with Clinical Records"
+          ]
+        },
+        {
+          "author": "Yusuke Takagi",
+          "papers_authored": 1,
+          "total_citations": 0,
+          "top_works": [
+            "Transformer-based Personalized Attention Mechanism for Medical Images with Clinical Records"
+          ]
+        }
+      ],
+      "latency_ms": 18.65
+    }
+  },
+  "indexing_and_plans": {
+    "constraints": [
+      {
+        "id": 8,
+        "name": "author_name_uniq",
+        "type": "UNIQUENESS",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Author"
+        ],
+        "properties": [
+          "name"
+        ],
+        "ownedIndex": "author_name_uniq",
+        "propertyType": null
+      },
+      {
+        "id": 4,
+        "name": "paper_id_uniq",
+        "type": "UNIQUENESS",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Paper"
+        ],
+        "properties": [
+          "id"
+        ],
+        "ownedIndex": "paper_id_uniq",
+        "propertyType": null
+      },
+      {
+        "id": 10,
+        "name": "repo_name_uniq",
+        "type": "UNIQUENESS",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Repository"
+        ],
+        "properties": [
+          "name"
+        ],
+        "ownedIndex": "repo_name_uniq",
+        "propertyType": null
+      },
+      {
+        "id": 16,
+        "name": "report_id_uniq",
+        "type": "UNIQUENESS",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Report"
+        ],
+        "properties": [
+          "id"
+        ],
+        "ownedIndex": "report_id_uniq",
+        "propertyType": null
+      },
+      {
+        "id": 14,
+        "name": "search_id_uniq",
+        "type": "UNIQUENESS",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Search"
+        ],
+        "properties": [
+          "id"
+        ],
+        "ownedIndex": "search_id_uniq",
+        "propertyType": null
+      },
+      {
+        "id": 12,
+        "name": "topic_name_uniq",
+        "type": "UNIQUENESS",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Topic"
+        ],
+        "properties": [
+          "name"
+        ],
+        "ownedIndex": "topic_name_uniq",
+        "propertyType": null
+      }
+    ],
+    "indexes": [
+      {
+        "id": 7,
+        "name": "author_name_uniq",
+        "state": "ONLINE",
+        "populationPercent": 100.0,
+        "type": "RANGE",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Author"
+        ],
+        "properties": [
+          "name"
+        ],
+        "indexProvider": "range-1.0",
+        "owningConstraint": "author_name_uniq",
+        "lastRead": "2026-09-20T15:20:01.877000000+00:00",
+        "readCount": 989
+      },
+      {
+        "id": 1,
+        "name": "index_343aff4e",
+        "state": "ONLINE",
+        "populationPercent": 100.0,
+        "type": "LOOKUP",
+        "entityType": "NODE",
+        "labelsOrTypes": null,
+        "properties": null,
+        "indexProvider": "token-lookup-1.0",
+        "owningConstraint": null,
+        "lastRead": "2026-09-20T15:20:14.616000000+00:00",
+        "readCount": 8
+      },
+      {
+        "id": 2,
+        "name": "index_f7700477",
+        "state": "ONLINE",
+        "populationPercent": 100.0,
+        "type": "LOOKUP",
+        "entityType": "RELATIONSHIP",
+        "labelsOrTypes": null,
+        "properties": null,
+        "indexProvider": "token-lookup-1.0",
+        "owningConstraint": null,
+        "lastRead": "2026-09-20T15:20:14.437000000+00:00",
+        "readCount": 2
+      },
+      {
+        "id": 3,
+        "name": "paper_id_uniq",
+        "state": "ONLINE",
+        "populationPercent": 100.0,
+        "type": "RANGE",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Paper"
+        ],
+        "properties": [
+          "id"
+        ],
+        "indexProvider": "range-1.0",
+        "owningConstraint": "paper_id_uniq",
+        "lastRead": "2026-09-20T15:20:02.813000000+00:00",
+        "readCount": 278
+      },
+      {
+        "id": 17,
+        "name": "paper_title_idx",
+        "state": "ONLINE",
+        "populationPercent": 100.0,
+        "type": "RANGE",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Paper"
+        ],
+        "properties": [
+          "title"
+        ],
+        "indexProvider": "range-1.0",
+        "owningConstraint": null,
+        "lastRead": null,
+        "readCount": 0
+      },
+      {
+        "id": 18,
+        "name": "paper_year_idx",
+        "state": "ONLINE",
+        "populationPercent": 100.0,
+        "type": "RANGE",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Paper"
+        ],
+        "properties": [
+          "year"
+        ],
+        "indexProvider": "range-1.0",
+        "owningConstraint": null,
+        "lastRead": null,
+        "readCount": 0
+      },
+      {
+        "id": 9,
+        "name": "repo_name_uniq",
+        "state": "ONLINE",
+        "populationPercent": 100.0,
+        "type": "RANGE",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Repository"
+        ],
+        "properties": [
+          "name"
+        ],
+        "indexProvider": "range-1.0",
+        "owningConstraint": "repo_name_uniq",
+        "lastRead": "2026-09-20T15:19:42.033000000+00:00",
+        "readCount": 682
+      },
+      {
+        "id": 20,
+        "name": "report_created_idx",
+        "state": "ONLINE",
+        "populationPercent": 100.0,
+        "type": "RANGE",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Report"
+        ],
+        "properties": [
+          "created_at"
+        ],
+        "indexProvider": "range-1.0",
+        "owningConstraint": null,
+        "lastRead": null,
+        "readCount": 0
+      },
+      {
+        "id": 15,
+        "name": "report_id_uniq",
+        "state": "ONLINE",
+        "populationPercent": 100.0,
+        "type": "RANGE",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Report"
+        ],
+        "properties": [
+          "id"
+        ],
+        "indexProvider": "range-1.0",
+        "owningConstraint": "report_id_uniq",
+        "lastRead": "2026-09-20T15:19:42.027000000+00:00",
+        "readCount": 12
+      },
+      {
+        "id": 21,
+        "name": "report_type_idx",
+        "state": "ONLINE",
+        "populationPercent": 100.0,
+        "type": "RANGE",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Report"
+        ],
+        "properties": [
+          "report_type"
+        ],
+        "indexProvider": "range-1.0",
+        "owningConstraint": null,
+        "lastRead": null,
+        "readCount": 0
+      },
+      {
+        "id": 19,
+        "name": "search_created_idx",
+        "state": "ONLINE",
+        "populationPercent": 100.0,
+        "type": "RANGE",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Search"
+        ],
+        "properties": [
+          "created_at"
+        ],
+        "indexProvider": "range-1.0",
+        "owningConstraint": null,
+        "lastRead": null,
+        "readCount": 0
+      },
+      {
+        "id": 13,
+        "name": "search_id_uniq",
+        "state": "ONLINE",
+        "populationPercent": 100.0,
+        "type": "RANGE",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Search"
+        ],
+        "properties": [
+          "id"
+        ],
+        "indexProvider": "range-1.0",
+        "owningConstraint": "search_id_uniq",
+        "lastRead": "2026-09-20T15:19:41.979000000+00:00",
+        "readCount": 12
+      },
+      {
+        "id": 11,
+        "name": "topic_name_uniq",
+        "state": "ONLINE",
+        "populationPercent": 100.0,
+        "type": "RANGE",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Topic"
+        ],
+        "properties": [
+          "name"
+        ],
+        "indexProvider": "range-1.0",
+        "owningConstraint": "topic_name_uniq",
+        "lastRead": "2026-09-20T15:20:04.090000000+00:00",
+        "readCount": 44
+      }
+    ],
+    "explain_plan": {
+      "plan": []
+    }
+  },
+  "database_metrics": {
+    "reports": 6,
+    "authors": 212,
+    "topics": 7,
+    "repositories": 29,
+    "papers": 48,
+    "searches": 6,
+    "relationships": 511
+  }
+}
