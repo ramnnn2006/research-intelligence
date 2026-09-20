@@ -615,14 +615,117 @@ Find GitHub implementations related to Diffusion Models
 
 ---
 
-# 👩‍💻 Author
+---
 
-**Raveena V**
+# 🗄️ NoSQL Course Implementation (Digital Assignment 2 / Review 2)
 
-B.Tech Computer Science and Engineering
+### Academic Context
+* **Course**: BCSE406L – NoSQL Databases
+* **Institution**: Vellore Institute of Technology (VIT), Chennai
+* **Faculty**: Dr. S. Geetha
+* **Review Phase**: Review 2 — Database Implementation & Progress (10 Marks)
 
-VIT Chennai
+### Team Roster & Roles
+| Name | Reg. No | Role | Key Focus |
+| :--- | :--- | :--- | :--- |
+| **Raveena V** | 23BCE1490 | Database Design & Graph Modeling | Schema design, Cypher constraints, node/edge modeling, export scripts |
+| **Yuvan Aadheraj K** | 23BCE1675 | Backend Development & API Integration | Cypher CRUD routes, FastAPI query endpoints, query benchmark suite |
+| **Ramakrishnan P H** | 24BCE5128 | Frontend Development & Data Visualization | Interactive graph visualization, analytics views, query result presentation |
+
+---
+
+### Graph Database Architecture & Schema
+
+The platform persists research data in **Neo4j 5.18.0 Community Edition** using a native labeled property graph model:
+
+```
+ (Author:Author {name, affiliation})
+        │
+   [:AUTHORED]
+        ▼
+   (Paper:Paper {id, title, abstract, year, citation_count, venue, arxiv_id, url})
+        │
+   ├── [:FOUND_REPO] ──► (Repo:Repository {name, url, stars, description, language})
+   ├── [:COVERS_TOPIC] ──► (Topic:Topic {name})
+   └── [:CITES] ──► (Paper:Paper)
+
+ (Search:Search {id, query, timestamp}) ── [:PRODUCED] ──► (Paper)
+ (Report:Report {id, title, type, content}) ── [:REFERENCES] ──► (Paper)
+```
+
+#### Node Labels and Properties
+- `Paper`: `id` (UUID), `title`, `abstract`, `year` (int), `citation_count` (int), `venue`, `url`, `arxiv_id`, `created_at`
+- `Author`: `name` (unique string), `affiliation`
+- `Topic`: `name` (unique string)
+- `Repository`: `url` (unique string), `name`, `stars` (int), `description`, `language`
+- `Search`: `id` (UUID), `query`, `timestamp`, `results_count` (int)
+- `Report`: `id` (UUID), `title`, `type`, `content`, `created_at`
+
+#### Schema Constraints & Indexes
+```cypher
+CREATE CONSTRAINT paper_id_uniq IF NOT EXISTS FOR (p:Paper) REQUIRE p.id IS UNIQUE;
+CREATE CONSTRAINT author_name_uniq IF NOT EXISTS FOR (a:Author) REQUIRE a.name IS UNIQUE;
+CREATE CONSTRAINT topic_name_uniq IF NOT EXISTS FOR (t:Topic) REQUIRE t.name IS UNIQUE;
+CREATE CONSTRAINT repo_url_uniq IF NOT EXISTS FOR (r:Repository) REQUIRE r.url IS UNIQUE;
+CREATE CONSTRAINT search_id_uniq IF NOT EXISTS FOR (s:Search) REQUIRE s.id IS UNIQUE;
+CREATE CONSTRAINT report_id_uniq IF NOT EXISTS FOR (rp:Report) REQUIRE rp.id IS UNIQUE;
+CREATE INDEX paper_title_idx IF NOT EXISTS FOR (p:Paper) ON (p.title);
+CREATE INDEX paper_year_idx IF NOT EXISTS FOR (p:Paper) ON (p.year);
+```
+
+---
+
+### Cypher CRUD Operations API
+
+Dedicated REST endpoints wrap native Cypher queries for entity lifecycle management:
+
+| Operation | Endpoint | Cypher Pattern |
+| :--- | :--- | :--- |
+| **Create** | `POST /api/db/crud/create` | `MERGE (p:Paper {id: $id}) ON CREATE SET ...` |
+| **Read** | `GET /api/db/crud/read/{id}` | `MATCH (p:Paper {id: $id}) OPTIONAL MATCH (a)-[:AUTHORED]->(p) RETURN ...` |
+| **Update** | `PUT /api/db/crud/update` | `MATCH (p:Paper {id: $id}) SET p.citation_count = $citations RETURN ...` |
+| **Delete** | `DELETE /api/db/crud/delete/{id}` | `MATCH (p:Paper {id: $id}) DETACH DELETE p` |
+
+---
+
+### Advanced Graph Query Catalog
+
+The system implements 10+ advanced graph domain queries in `backend/app/db/queries.py`:
+
+1. **Top Influential Papers by Citations**: Multi-property sort and projection filtering.
+2. **Most Prolific Authors with Average Citations**: Aggregation with `count(p)` and `avg(p.citation_count)`.
+3. **Cross-Domain Author Collaboration Network**: 2-hop pattern matching across shared papers.
+4. **Paper Topic Distribution with Density Analysis**: Topic node aggregations with paper clustering.
+5. **Code Availability and Popular Repositories**: Cross-label traversal from `Paper` to `Repository` via `[:FOUND_REPO]`.
+6. **Recent Publications Multi-Criteria Filter**: Range filtering on publication year and minimum citations.
+7. **Co-Authorship Network Neighborhood Expansion**: Dynamic neighbor discovery for a specific author.
+8. **Research Synthesis Provenance Tracking**: Traversal linking `Report -> [:REFERENCES] -> Paper -> [:AUTHORED] <- Author`.
+9. **Citation Distribution Quantile Aggregation**: Aggregation pipeline with bucketed citation analysis.
+10. **Topic Synergy and Interdisciplinary Overlap**: Detecting topics connected through shared cross-domain papers.
+
+---
+
+### Live Multi-Source Ingestion & Query Benchmark
+
+The database is populated dynamically via live MCP connectors (no static mock fixtures):
+
+```bash
+# Ingest live research from ArXiv, Semantic Scholar, and GitHub
+python scripts/ingest_live.py
+
+# Benchmark all 10+ Cypher queries and generate timing evidence
+python scripts/benchmark_queries.py
+
+# Export standalone Cypher statements and schema
+python scripts/export_cypher.py
+```
+
+#### Graph Snapshot Statistics (Live Ingestion)
+- **Total Nodes**: 308 (48 Papers, 212 Authors, 29 Repositories, 7 Topics, 6 Searches, 6 Reports)
+- **Total Relationships**: 511 (`AUTHORED`, `COVERS_TOPIC`, `FOUND_REPO`, `PRODUCED`, `REFERENCES`)
+- **Execution Latencies**: Sub-10ms response times across all 10 domain queries.
 
 ---
 
 ⭐ If you found this project useful, consider giving it a star.
+
