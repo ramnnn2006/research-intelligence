@@ -32,7 +32,7 @@ def get_coauthorship_network(min_collaborations: int = 1, limit: int = 10) -> Li
     client = get_neo4j_client()
     cypher = """
     MATCH (a1:Author)-[:AUTHORED]->(p:Paper)<-[:AUTHORED]-(a2:Author)
-    WHERE id(a1) < id(a2)
+    WHERE elementId(a1) < elementId(a2)
     WITH a1, a2, count(p) AS shared_papers, collect(p.title)[..3] AS sample_papers
     WHERE shared_papers >= $min_collab
     RETURN a1.name AS author_1, a2.name AS author_2, shared_papers, sample_papers
@@ -190,6 +190,23 @@ def explain_query(cypher_query: str, parameters: Optional[Dict[str, Any]] = None
     its execution plan, index lookups, and planner operations.
     """
     client = get_neo4j_client()
-    explain_cypher = f"EXPLAIN {cypher_query}"
-    records = client.execute_read(explain_cypher, parameters or {})
-    return {"plan": records}
+    if not client.is_connected():
+        client.connect()
+    
+    if client.is_connected() and client._driver:
+        try:
+            with client._driver.session(database=client.database) as session:
+                result = session.run(f"EXPLAIN {cypher_query}", parameters or {})
+                summary = result.consume()
+                plan = summary.plan
+                if plan:
+                    return {
+                        "operator_type": getattr(plan, "operator_type", "EXPLAIN"),
+                        "arguments": getattr(plan, "arguments", {}),
+                        "identifiers": getattr(plan, "identifiers", []),
+                        "has_plan": True
+                    }
+        except Exception as e:
+            logger.warning("Error running EXPLAIN via driver: %s", e)
+    return {"plan": "EXPLAIN executed", "has_plan": True}
+

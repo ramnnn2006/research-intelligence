@@ -235,3 +235,52 @@ def crud_delete_paper(paper_id: str):
     from app.db.crud import delete_paper_node
     return delete_paper_node(paper_id)
 
+
+# ── Neo4j Graph Domain Queries & EXPLAIN Endpoints ────────────────────────
+class ExplainReq(BaseModel):
+    query: str
+    params: Optional[dict] = None
+
+@router.get("/db/queries/coauthorship")
+def query_coauthorship(min_collab: int = Query(default=1, ge=1), limit: int = Query(default=10, ge=1, le=100)):
+    """Finds collaborative researcher networks and co-authors."""
+    from app.db.queries import get_coauthorship_network
+    return {"results": get_coauthorship_network(min_collaborations=min_collab, limit=limit)}
+
+@router.get("/db/queries/paper-code")
+def query_paper_code(topic: Optional[str] = Query(default=None), limit: int = Query(default=10, ge=1, le=100)):
+    """Matches academic papers with verified GitHub repositories."""
+    from app.db.queries import get_paper_code_matching
+    return {"results": get_paper_code_matching(topic_name=topic, limit=limit)}
+
+@router.get("/db/queries/indegree-centrality")
+def query_indegree_centrality(limit: int = Query(default=8, ge=1, le=50)):
+    """Ranks landmark papers by in-degree citation count within the graph."""
+    from app.db.queries import get_indegree_centrality
+    return {"results": get_indegree_centrality(limit=limit)}
+
+@router.get("/db/queries/topic-distribution")
+def query_topic_distribution():
+    """Aggregates paper counts, total citations, and average impact per topic."""
+    from app.db.queries import get_topic_citation_distribution
+    return {"results": get_topic_citation_distribution()}
+
+@router.get("/db/queries/author-productivity")
+def query_author_productivity(limit: int = Query(default=8, ge=1, le=50)):
+    """Aggregates and ranks authors by publication volume and citation impact."""
+    from app.db.queries import get_author_productivity_ranking
+    return {"results": get_author_productivity_ranking(limit=limit)}
+
+@router.get("/db/queries/research-gaps")
+def query_research_gaps(topic_a: str = Query(..., description="First topic"), topic_b: str = Query(..., description="Second topic")):
+    """Evaluates cross-citation density between two fields to spot research gaps."""
+    from app.db.queries import get_cross_topic_research_gaps
+    return get_cross_topic_research_gaps(topic_a=topic_a, topic_b=topic_b)
+
+@router.post("/db/queries/explain")
+def query_explain(req: ExplainReq):
+    """Executes an EXPLAIN query plan to inspect index lookups and performance."""
+    from app.db.queries import explain_query
+    return explain_query(req.query, req.params)
+
+
