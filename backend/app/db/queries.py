@@ -1,4 +1,5 @@
 import logging
+import networkx as nx
 from typing import Dict, List, Any, Optional
 from app.db.neo4j_client import get_neo4j_client
 
@@ -210,3 +211,134 @@ def explain_query(cypher_query: str, parameters: Optional[Dict[str, Any]] = None
             logger.warning("Error running EXPLAIN via driver: %s", e)
     return {"plan": "EXPLAIN executed", "has_plan": True}
 
+
+
+def compute_citation_pagerank(iterations: int = 20, damping: float = 0.85,
+                              tolerance: float = 1e-4, limit: int = 10) -> Dict[str, Any]:
+    """
+    Query 11 (Algorithm): Iterative PageRank over :CITES links
+    Each pass redistributes a paper's score to the papers it cites, so
+    foundational work cited by other well-cited papers floats to the top.
+    Scores are stored on p.pagerank. Runs on Community Edition (no GDS needed).
+    """
+    client = get_neo4j_client()
+    client.execute_write("""
+    MATCH (p:Paper)
+    WITH collect(p) AS papers, count(p) AS n
+    UNWIND papers AS p
+    SET p.pagerank = 1.0 / n
+    """)
+
+    passes, delta = 0, None
+    for passes in range(1, iterations + 1):
+        client.execute_write("""
+        MATCH (p:Paper)
+        WITH count(p) AS n
+        MATCH (p:Paper)
+        CALL {
+            WITH p
+            MATCH (src:Paper)-[:CITES]->(p)
+            RETURN sum(src.pagerank / COUNT { (src)-[:CITES]->(:Paper) }) AS incoming
+        }
+        SET p.pagerank_next = (1 - $damping) / n + $damping * incoming
+        """, {"damping": damping})
+        res = client.execute_write("""
+        MATCH (p:Paper)
+        WITH p, abs(p.pagerank_next - p.pagerank) AS diff
+        SET p.pagerank = p.pagerank_next
+        REMOVE p.pagerank_next
+        RETURN sum(diff) AS delta
+        """)
+        delta = res[0]["delta"] if res else 0
+        if delta is not None and delta < tolerance:
+            break
+
+    ranking = client.execute_read("""
+    MATCH (p:Paper)
+    WHERE p.pagerank IS NOT NULL
+    RETURN p.id AS id, p.title AS title, p.year AS year,
+           round(p.pagerank, 6) AS pagerank,
+           COUNT { (:Paper)-[:CITES]->(p) } AS cited_by
+    ORDER BY pagerank DESC, cited_by DESC
+    LIMIT $limit
+    """, {"limit": limit})
+    return {"iterations": passes, "damping": damping, "converged_delta": delta, "results": ranking}
+
+
+def detect_paper_communities(resolution: float = 1.0, min_size: int = 2, limit: int = 10) -> Dict[str, Any]:
+    """
+    Query 12 (Algorithm): Louvain Community Clustering
+    Two papers are linked when one cites the other or when they share an
+    author, weighted by how many such links they have. Cypher pulls the
+    weighted edge list, networkx runs Louvain modularity optimisation, and the
+    community ids are written back to p.community so Cypher can group by them.
+    """
+    client = get_neo4j_client()
+    edges = client.execute_read("""
+    CALL {
+        MATCH (p1:Paper)-[:CITES]-(p2:Paper)
+        WHERE p1.id < p2.id
+        RETURN p1.id AS a, p2.id AS b
+        UNION ALL
+        MATCH (p1:Paper)<-[:AUTHORED]-(:Author)-[:AUTHORED]->(p2:Paper)
+        WHERE p1.id < p2.id
+        RETURN p1.id AS a, p2.id AS b
+    }
+    RETURN a, b, count(*) AS weight
+    """)
+    G = nx.Graph()
+    G.add_nodes_from(r["id"] for r in client.execute_read("MATCH (p:Paper) WHERE p.id IS NOT NULL RETURN p.id AS id"))
+    G.add_weighted_edges_from((e["a"], e["b"], e["weight"]) for e in edges)
+
+    # largest community gets id 0, seed keeps the ids stable between runs
+    parts = sorted(nx.community.louvain_communities(G, weight="weight", resolution=resolution, seed=42),
+                   key=len, reverse=True)
+    rows = [{"id": pid, "community": i} for i, members in enumerate(parts) for pid in members]
+    client.execute_write("""
+    UNWIND $rows AS row
+    MATCH (p:Paper {id: row.id})
+    SET p.community = row.community
+    """, {"rows": rows})
+
+    communities = client.execute_read("""
+    MATCH (p:Paper)
+    WHERE p.community IS NOT NULL
+    OPTIONAL MATCH (a:Author)-[:AUTHORED]->(p)
+    WITH p.community AS community, collect(DISTINCT p.title) AS papers, collect(DISTINCT a.name) AS authors
+    WHERE size(papers) >= $min_size
+    RETURN community, size(papers) AS size, papers[..5] AS sample_papers, authors[..5] AS key_authors
+    ORDER BY size DESC
+    LIMIT $limit
+    """, {"min_size": min_size, "limit": limit})
+    return {"total_communities": len(parts), "communities": communities, **get_community_modularity()}
+
+
+def get_community_modularity() -> Dict[str, Any]:
+    """
+    Query 13 (Aggregation): Modularity Score of the Current Partition
+    Q = sum over communities of (internal_edges / m) - (degree / 2m)^2,
+    using the same citation + shared-author edges as the clustering step.
+    Values above ~0.3 usually mean the clusters are real, not noise.
+    """
+    client = get_neo4j_client()
+    cypher = """
+    CALL {
+        MATCH (p1:Paper)-[:CITES]-(p2:Paper)
+        WHERE p1.id < p2.id
+        RETURN p1, p2
+        UNION ALL
+        MATCH (p1:Paper)<-[:AUTHORED]-(:Author)-[:AUTHORED]->(p2:Paper)
+        WHERE p1.id < p2.id
+        RETURN p1, p2
+    }
+    WITH collect({a: p1.community, b: p2.community}) AS edges
+    WITH edges, toFloat(size(edges)) AS m
+    WHERE m > 0
+    UNWIND edges AS e
+    UNWIND [e.a, e.b] AS c
+    WITH m, c, sum(CASE WHEN e.a = e.b THEN 0.5 ELSE 0.0 END) AS internal, count(*) AS degree
+    RETURN round(sum(internal / m - (degree / (2 * m)) ^ 2), 4) AS modularity,
+           count(c) AS connected_communities, coalesce(toInteger(max(m)), 0) AS edges
+    """
+    records = client.execute_read(cypher)
+    return records[0] if records else {"modularity": 0.0, "connected_communities": 0, "edges": 0}
