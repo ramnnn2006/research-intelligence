@@ -1,6 +1,11 @@
-import os, json, re
+import os, json, re, asyncio
 from langchain_groq import ChatGroq
 from langchain_core.prompts import PromptTemplate
+from app.mcp.crossref import CrossRefMCP
+from app.mcp.pubmed import PubMedMCP
+
+crossref = CrossRefMCP()
+pubmed   = PubMedMCP()
 
 def _llm(temp=0.3):
     return ChatGroq(
@@ -50,7 +55,22 @@ def _papers_str(papers: list) -> str:
         lines.append(f"[{i+1}] {title} ({year}): {summary}")
     return "\n".join(lines)
 
+async def _top_up(topic: str, papers: list, min_papers: int = 6) -> list:
+    """ArXiv/Scholar sometimes return very little (rate limits, niche or biomedical
+    topics). Fill the gap from CrossRef and PubMed so the LLM has something to cite."""
+    if len(papers) >= min_papers:
+        return papers
+    extra = await asyncio.gather(crossref.search(topic, 5), pubmed.search(topic, 5))
+    seen = {(p.get("title") or "").lower()[:60] for p in papers}
+    out = list(papers)
+    for p in (p for lst in extra for p in lst):
+        k = (p.get("title") or "").lower()[:60]
+        if k and k not in seen:
+            seen.add(k); out.append(p)
+    return out
+
 async def generate_literature_review(topic: str, papers: list) -> str:
+    papers = await _top_up(topic, papers)
     papers_text = _papers_str(papers)
     prompt = PromptTemplate.from_template(
         "You are an expert academic writer. Write a formal literature review (4-5 paragraphs) "
@@ -67,6 +87,7 @@ async def generate_literature_review(topic: str, papers: list) -> str:
         return f"Error generating review: {e}"
 
 async def detect_research_gaps(topic: str, papers: list) -> list:
+    papers = await _top_up(topic, papers)
     papers_text = _papers_str(papers)
     prompt = PromptTemplate.from_template(
         "You are a research strategist. Identify 5 specific research gaps for: {topic}\n\n"
@@ -125,6 +146,7 @@ async def compare_papers(paper_a: dict, paper_b: dict) -> dict:
     }
 
 async def generate_survey(topic: str, papers: list) -> dict:
+    papers = await _top_up(topic, papers)
     papers_text = _papers_str(papers)
     prompt = PromptTemplate.from_template(
         "Generate a structured literature survey for: {topic}\n\n"
