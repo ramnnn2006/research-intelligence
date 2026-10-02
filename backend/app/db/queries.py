@@ -342,3 +342,78 @@ def get_community_modularity() -> Dict[str, Any]:
     """
     records = client.execute_read(cypher)
     return records[0] if records else {"modularity": 0.0, "connected_communities": 0, "edges": 0}
+
+
+EXPORT_SCOPES = {
+    "citations": "CITES",
+    "authors": "AUTHORED",
+    "topic": "CITES|AUTHORED|IMPLEMENTS|BELONGS_TO",
+}
+
+NODE_PROJECTION = """{key: toLower(labels(n)[0]) + ':' + coalesce(n.id, n.name),
+                      label: coalesce(n.title, n.name), type: toLower(labels(n)[0]),
+                      .year, .citations, .url, .stars}"""
+
+
+def _graph_node(n: Dict[str, Any]) -> Dict[str, Any]:
+    node = {"id": n["key"], "label": n.get("label") or n["key"],
+            "type": "repo" if n["type"] == "repository" else n["type"]}
+    for field in ("year", "citations", "url", "stars"):
+        if n.get(field) not in (None, ""):
+            node[field] = n[field]
+    return node
+
+
+def get_export_subgraph(scope: str = "citations", topic: str = "", paper_id: str = "",
+                        depth: int = 2, limit: int = 200) -> Dict[str, Any]:
+    """
+    Query 14: Subgraph Extraction for Export
+    Seeds are a single paper, or every paper under a topic / past search query
+    (or the most cited papers when neither is given). From the seeds we walk
+    up to `depth` hops over the relationship types of the chosen scope and
+    return the result as {nodes, links}, the same shape the d3 graph uses.
+    """
+    rel = EXPORT_SCOPES.get(scope, "CITES")
+    depth = max(1, min(int(depth), 3))
+    client = get_neo4j_client()
+
+    seeds = client.execute_read("""
+    MATCH (n:Paper)
+    WHERE ($pid <> '' AND n.id = $pid)
+       OR ($pid = '' AND $topic <> '' AND (
+            EXISTS { MATCH (n)-[:BELONGS_TO]->(t:Topic) WHERE toLower(t.name) CONTAINS toLower($topic) }
+            OR EXISTS { MATCH (s:Search)-[:FOUND_PAPER]->(n) WHERE toLower(s.query) CONTAINS toLower($topic) }))
+       OR ($pid = '' AND $topic = '')
+    RETURN n %s AS node
+    ORDER BY n.citations DESC
+    LIMIT 25
+    """ % NODE_PROJECTION, {"pid": paper_id or "", "topic": topic or ""})
+
+    nodes = {}
+    for row in seeds:
+        node = _graph_node(row["node"])
+        node["seed"] = True
+        nodes[node["id"]] = node
+    if not nodes:
+        return {"scope": scope, "depth": depth, "seeds": 0, "nodes": [], "links": []}
+
+    # variable-length bounds can't be passed as parameters, depth is clamped to 1..3 above
+    rows = client.execute_read("""
+    MATCH (seed:Paper) WHERE seed.id IN $ids
+    MATCH path = (seed)-[:%s*1..%d]-()
+    UNWIND relationships(path) AS r
+    WITH DISTINCT r
+    LIMIT $limit
+    RETURN type(r) AS relation, [n IN [startNode(r), endNode(r)] | n %s] AS ends
+    """ % (rel, depth, NODE_PROJECTION),
+        {"ids": [k.split(":", 1)[1] for k in nodes], "limit": limit})
+
+    links = []
+    for row in rows:
+        src, dst = (_graph_node(n) for n in row["ends"])
+        nodes.setdefault(src["id"], src)
+        nodes.setdefault(dst["id"], dst)
+        links.append({"source": src["id"], "target": dst["id"], "relation": row["relation"]})
+
+    return {"scope": scope, "depth": depth, "seeds": len(seeds),
+            "nodes": list(nodes.values()), "links": links}

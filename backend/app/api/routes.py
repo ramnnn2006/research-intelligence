@@ -1,4 +1,6 @@
+import csv, io, json
 from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import Response
 from pydantic import BaseModel
 from typing import Optional
 from app.mcp.arxiv import ArxivMCP
@@ -284,3 +286,46 @@ def query_explain(req: ExplainReq):
     return explain_query(req.query, req.params)
 
 
+
+
+# ── Subgraph Export (JSON / CSV downloads) ────────────────────────────────
+def _subgraph(scope, topic, paper_id, depth, limit):
+    from app.db.queries import get_export_subgraph
+    return get_export_subgraph(scope=scope, topic=topic, paper_id=paper_id, depth=depth, limit=limit)
+
+def _download(body: str, media_type: str, filename: str) -> Response:
+    return Response(body, media_type=media_type,
+                    headers={"Content-Disposition": f'attachment; filename="{filename}"'})
+
+@router.get("/graph/export/json")
+def export_subgraph_json(scope: str = Query(default="citations", pattern="^(citations|authors|topic)$"),
+                         topic: str = Query(default=""), paper_id: str = Query(default=""),
+                         depth: int = Query(default=2, ge=1, le=3),
+                         limit: int = Query(default=200, ge=1, le=1000)):
+    """Exports citation paths, an author network or a whole topic subgraph as JSON."""
+    data = _subgraph(scope, topic, paper_id, depth, limit)
+    return _download(json.dumps(data, indent=2, default=str), "application/json",
+                     f"subgraph_{scope}_{depth}hop.json")
+
+@router.get("/graph/export/csv")
+def export_subgraph_csv(scope: str = Query(default="citations", pattern="^(citations|authors|topic)$"),
+                        topic: str = Query(default=""), paper_id: str = Query(default=""),
+                        depth: int = Query(default=2, ge=1, le=3),
+                        limit: int = Query(default=200, ge=1, le=1000),
+                        table: str = Query(default="edges", pattern="^(edges|nodes)$")):
+    """Same subgraph as a flat CSV, either an edge list or a node table."""
+    data = _subgraph(scope, topic, paper_id, depth, limit)
+    buf = io.StringIO()
+    if table == "nodes":
+        writer = csv.DictWriter(buf, fieldnames=["id", "label", "type", "year", "citations", "stars", "url"],
+                                extrasaction="ignore")
+        writer.writeheader()
+        writer.writerows(data["nodes"])
+    else:
+        labels = {n["id"]: n["label"] for n in data["nodes"]}
+        writer = csv.writer(buf)
+        writer.writerow(["source", "source_label", "relation", "target", "target_label"])
+        for l in data["links"]:
+            writer.writerow([l["source"], labels.get(l["source"], ""), l["relation"],
+                             l["target"], labels.get(l["target"], "")])
+    return _download(buf.getvalue(), "text/csv", f"subgraph_{scope}_{depth}hop_{table}.csv")
