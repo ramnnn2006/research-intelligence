@@ -9,7 +9,8 @@ const SIZES = {
   topic: 16, paper: 9, repo: 11, author: 7, root: 16, cited_by: 8, reference: 8,
 }
 
-export default function Graph({ data, height = 420 }) {
+// depth / onDepthChange are optional, pass them to show the hop slider
+export default function Graph({ data, height = 420, depth, onDepthChange }) {
   const containerRef = useRef()
   const svgRef = useRef()
 
@@ -77,8 +78,8 @@ export default function Graph({ data, height = 420 }) {
         .enter().append('circle')
         .attr('r', d => SIZES[d.type] || 9)
         .attr('fill', d => COLORS[d.type] || '#8b949e')
-        .attr('stroke', '#07090f')
-        .attr('stroke-width', 2)
+        .attr('stroke', d => d.seed ? '#3fb950' : '#07090f')
+        .attr('stroke-width', d => d.seed ? 3 : 2)
         .style('cursor', 'pointer')
         .call(
           d3.drag()
@@ -132,6 +133,7 @@ export default function Graph({ data, height = 420 }) {
           if (d.year) html += `<br/><span style="color:#8b949e">Year: ${d.year}</span>`
           if (d.citations) html += `<br/><span style="color:#8b949e">Citations: ${d.citations.toLocaleString()}</span>`
           if (d.stars) html += `<br/><span style="color:#e3b341">⭐ ${d.stars.toLocaleString()}</span>`
+          if (d.seed) html += `<br/><span style="color:#3fb950">Seed paper</span>`
           tip.html(html)
             .style('opacity', '1')
             .style('left', (event.offsetX + 14) + 'px')
@@ -167,6 +169,17 @@ export default function Graph({ data, height = 420 }) {
 
   return (
     <div style={{ width: '100%' }}>
+      {onDepthChange && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, fontSize: 12, color: '#8b949e' }}>
+          <span>Traversal depth</span>
+          <input
+            type="range" min={1} max={3} step={1} value={depth || 1}
+            onChange={e => onDepthChange(Number(e.target.value))}
+            style={{ flex: 1, accentColor: '#58a6ff', cursor: 'pointer' }}
+          />
+          <span style={{ color: '#58a6ff', fontWeight: 600, minWidth: 42, textAlign: 'right' }}>{depth || 1}-hop</span>
+        </div>
+      )}
       <div
         ref={containerRef}
         style={{

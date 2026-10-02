@@ -16,6 +16,32 @@ export default function Discover() {
   const [error, setError]       = useState('')
   const [showGraph, setShowGraph] = useState(true)
   const [activeTab, setActiveTab] = useState('papers') // 'papers' | 'repos'
+  const [depth, setDepth]       = useState(1)
+  const [subgraph, setSubgraph] = useState(null)   // neo4j subgraph, replaces the search graph once loaded
+  const [graphLoading, setGraphLoading] = useState(false)
+  const [showExport, setShowExport] = useState(false)
+  const [exportScope, setExportScope]   = useState('topic')
+  const [exportFormat, setExportFormat] = useState('json')
+
+  async function loadSubgraph(d) {
+    setDepth(d); setGraphLoading(true)
+    try {
+      const r = await fetch(`/api/graph/export/json?scope=topic&topic=${encodeURIComponent(query)}&depth=${d}`)
+      if (!r.ok) throw new Error(`HTTP ${r.status}`)
+      setSubgraph(await r.json())
+    } catch (e) { setError(`Could not load ${d}-hop subgraph: ${e.message}`) }
+    setGraphLoading(false)
+  }
+
+  function downloadExport() {
+    const [fmt, table] = exportFormat.split(':')
+    let url = `/api/graph/export/${fmt}?scope=${exportScope}&topic=${encodeURIComponent(query)}&depth=${depth}`
+    if (table) url += `&table=${table}`
+    const a = document.createElement('a')
+    a.href = url
+    a.click()
+    setShowExport(false)
+  }
 
   async function search() {
     if (!query.trim() || loading) return
@@ -27,6 +53,7 @@ export default function Discover() {
       if (scholar) sources.push('semantic_scholar')
       // GitHub is always fetched server-side regardless
       setResult(await api.search(query, sources, 12))
+      setSubgraph(null)
       setActiveTab('papers')
     } catch (e) { setError(e.message) }
     setLoading(false)
@@ -113,13 +140,68 @@ export default function Discover() {
             {/* Graph panel */}
             {showGraph && result.graph && (
               <div style={{ background: '#161b22', border: '1px solid #21262d', borderRadius: 8, padding: 16, position: 'sticky', top: 0 }}>
-                <h3 style={{ fontSize: 13, marginBottom: 10, fontWeight: 600 }}>Knowledge Graph</h3>
-                <Graph data={result.graph} height={480} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                  <h3 style={{ fontSize: 13, fontWeight: 600 }}>{subgraph ? `Neo4j Subgraph (${subgraph.nodes.length} nodes)` : 'Knowledge Graph'}</h3>
+                  {graphLoading && <Spinner />}
+                  {subgraph && (
+                    <button onClick={() => setSubgraph(null)}
+                      style={{ background: 'none', border: 'none', color: '#6e7681', fontSize: 11, cursor: 'pointer', padding: 0 }}>
+                      reset
+                    </button>
+                  )}
+                  <button onClick={() => setShowExport(true)}
+                    style={{ marginLeft: 'auto', background: 'none', border: '1px solid #30363d', borderRadius: 6, color: '#8b949e', padding: '3px 10px', fontSize: 11, cursor: 'pointer' }}>
+                    ⤓ Export Subgraph
+                  </button>
+                </div>
+                <Graph data={subgraph || result.graph} height={480} depth={depth} onDepthChange={loadSubgraph} />
               </div>
             )}
           </div>
         </>
       )}
+
+      {/* Export modal */}
+      {showExport && (
+        <div onClick={() => setShowExport(false)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(1,4,9,.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 8, padding: 20, width: 340, display: 'flex', flexDirection: 'column', gap: 12, fontSize: 13 }}>
+            <h3 style={{ fontSize: 15 }}>Export Subgraph</h3>
+            <p style={{ color: '#8b949e', fontSize: 12 }}>
+              Seeds: papers found for "{query}" · {depth}-hop traversal
+            </p>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, color: '#8b949e' }}>
+              What to export
+              <select value={exportScope} onChange={e => setExportScope(e.target.value)} style={selectStyle}>
+                <option value="citations">Citation paths</option>
+                <option value="authors">Author network</option>
+                <option value="topic">Whole topic subgraph</option>
+              </select>
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, color: '#8b949e' }}>
+              Format
+              <select value={exportFormat} onChange={e => setExportFormat(e.target.value)} style={selectStyle}>
+                <option value="json">JSON (nodes + links)</option>
+                <option value="csv:edges">CSV edge list</option>
+                <option value="csv:nodes">CSV node table</option>
+              </select>
+            </label>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
+              <button onClick={() => setShowExport(false)}
+                style={{ background: 'none', border: '1px solid #30363d', borderRadius: 6, color: '#8b949e', padding: '6px 14px', cursor: 'pointer' }}>
+                Cancel
+              </button>
+              <button onClick={downloadExport}
+                style={{ background: '#58a6ff', border: 'none', borderRadius: 6, color: '#000', fontWeight: 600, padding: '6px 14px', cursor: 'pointer' }}>
+                Download
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
+
+const selectStyle = { background: '#0d1117', border: '1px solid #30363d', borderRadius: 6, color: '#e6edf3', padding: '6px 8px', fontSize: 13 }
