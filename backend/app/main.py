@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from app.api.routes import router
 from app.db.database import init_db
 from app.db.neo4j_client import close_neo4j_client
+from app.db.health import get_db_health
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -29,6 +30,11 @@ app.add_middleware(
     allow_headers=["*"]
 )
 app.include_router(router)
+
+@app.get("/api/db/health")
+def db_health():
+    """Live Neo4j diagnostics: pool, counts per label, indexes, heap and index advice."""
+    return get_db_health()
 
 # Serve React frontend build (or plain HTML fallback)
 static_dir = os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist")
