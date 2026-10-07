@@ -7,6 +7,7 @@ import Compare from './pages/Compare'
 import Chat from './pages/Chat'
 import Roadmap from './pages/Roadmap'
 import History from './pages/History'
+import Analytics from './pages/Analytics'
 
 // Shared context so any tab can read/write the global topic
 export const TopicContext = createContext({ topic: '', setTopic: () => {} })
@@ -21,6 +22,7 @@ const TABS = [
   { id: 'chat',     label: '💬 Chat' },
   { id: 'roadmap',  label: '🗺️ Roadmap' },
   { id: 'history',  label: '🗂️ History' },
+  { id: 'analytics', label: '📊 Analytics' },
 ]
 
 export default function App() {
@@ -90,6 +92,7 @@ export default function App() {
             ['chat',     <Chat />],
             ['roadmap',  <Roadmap />],
             ['history',  <History />],
+            ['analytics', <Analytics />],
           ].map(([id, page]) => (
             <div key={id} style={{
               position: 'absolute', inset: 0,
