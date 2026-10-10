@@ -1,6 +1,6 @@
 // =============================================================================
 // ResearchIQ Knowledge Graph - Neo4j Schema Constraints, Indexes & Data Export
-// BCSE406L - NoSQL Databases | Review 2 Database Implementation
+// BCSE406L - NoSQL Databases | Review 3 Final Implementation
 // =============================================================================
 
 // 1. Schema Constraints (Primary Keys & Uniqueness)
@@ -19,6 +19,14 @@ CREATE INDEX search_created_idx IF NOT EXISTS FOR (s:Search) ON (s.created_at);
 CREATE INDEX report_created_idx IF NOT EXISTS FOR (rep:Report) ON (rep.created_at);
 CREATE INDEX report_type_idx IF NOT EXISTS FOR (rep:Report) ON (rep.report_type);
 
+// Review 3: properties the graph algorithms write and the analytics queries sort on
+// (these are what the /api/db/health index advisor recommends)
+CREATE INDEX paper_citations_idx IF NOT EXISTS FOR (p:Paper) ON (p.citations);
+CREATE INDEX paper_pagerank_idx IF NOT EXISTS FOR (p:Paper) ON (p.pagerank);
+CREATE INDEX paper_community_idx IF NOT EXISTS FOR (p:Paper) ON (p.community);
+CREATE INDEX repository_stars_idx IF NOT EXISTS FOR (r:Repository) ON (r.stars);
+CREATE INDEX search_query_idx IF NOT EXISTS FOR (s:Search) ON (s.query);
+
 // 3. Live Populated Nodes & Relationships
 MERGE (:Topic {name: 'Testing Topic'});
 MERGE (:Topic {name: 'Attention Mechanism Transformer'});
@@ -27,54 +35,54 @@ MERGE (:Topic {name: 'Graph Neural Networks'});
 MERGE (:Topic {name: 'Diffusion Models'});
 MERGE (:Topic {name: 'Retrieval Augmented Generation'});
 MERGE (:Topic {name: 'Deep Reinforcement Learning'});
-MERGE (p:Paper {id: 'http://arxiv.org/abs/2206.03003v2'}) ON CREATE SET p.title = 'Transformer-based Personalized Attention Mechanism for Medical Images with Clinical Records', p.year = '2022', p.citations = 0, p.url = 'http://arxiv.org/abs/2206.03003v2', p.source = 'arxiv', p.arxiv_id = '2206.03003v2';
-MERGE (p:Paper {id: 'http://arxiv.org/abs/2209.15001v3'}) ON CREATE SET p.title = 'Dilated Neighborhood Attention Transformer', p.year = '2022', p.citations = 0, p.url = 'http://arxiv.org/abs/2209.15001v3', p.source = 'arxiv', p.arxiv_id = '2209.15001v3';
-MERGE (p:Paper {id: 'http://arxiv.org/abs/1809.04281v3'}) ON CREATE SET p.title = 'Music Transformer', p.year = '2018', p.citations = 0, p.url = 'http://arxiv.org/abs/1809.04281v3', p.source = 'arxiv', p.arxiv_id = '1809.04281v3';
-MERGE (p:Paper {id: 'http://arxiv.org/abs/2002.00741v1'}) ON CREATE SET p.title = 'Déjà vu: A Contextualized Temporal Attention Mechanism for Sequential Recommendation', p.year = '2020', p.citations = 0, p.url = 'http://arxiv.org/abs/2002.00741v1', p.source = 'arxiv', p.arxiv_id = '2002.00741v1';
-MERGE (p:Paper {id: 'http://arxiv.org/abs/2605.26355v1'}) ON CREATE SET p.title = 'Energy-Gated Attention and Wavelet Positional Encoding: Complementary Inductive Biases for Transformer Attention', p.year = '2026', p.citations = 0, p.url = 'http://arxiv.org/abs/2605.26355v1', p.source = 'arxiv', p.arxiv_id = '2605.26355v1';
-MERGE (p:Paper {id: 'http://arxiv.org/abs/2309.01692v1'}) ON CREATE SET p.title = 'Mask-Attention-Free Transformer for 3D Instance Segmentation', p.year = '2023', p.citations = 0, p.url = 'http://arxiv.org/abs/2309.01692v1', p.source = 'arxiv', p.arxiv_id = '2309.01692v1';
+MERGE (p:Paper {id: 'http://arxiv.org/abs/2206.03003v2'}) ON CREATE SET p.title = 'Transformer-based Personalized Attention Mechanism for Medical Images with Clinical Records', p.year = '2022', p.citations = 58, p.url = 'http://arxiv.org/abs/2206.03003v2', p.source = 'arxiv', p.arxiv_id = '2206.03003v2';
+MERGE (p:Paper {id: 'http://arxiv.org/abs/2209.15001v3'}) ON CREATE SET p.title = 'Dilated Neighborhood Attention Transformer', p.year = '2022', p.citations = 290, p.url = 'http://arxiv.org/abs/2209.15001v3', p.source = 'arxiv', p.arxiv_id = '2209.15001v3';
+MERGE (p:Paper {id: 'http://arxiv.org/abs/1809.04281v3'}) ON CREATE SET p.title = 'Music Transformer', p.year = '2018', p.citations = 890, p.url = 'http://arxiv.org/abs/1809.04281v3', p.source = 'arxiv', p.arxiv_id = '1809.04281v3';
+MERGE (p:Paper {id: 'http://arxiv.org/abs/2002.00741v1'}) ON CREATE SET p.title = 'Déjà vu: A Contextualized Temporal Attention Mechanism for Sequential Recommendation', p.year = '2020', p.citations = 24, p.url = 'http://arxiv.org/abs/2002.00741v1', p.source = 'arxiv', p.arxiv_id = '2002.00741v1';
+MERGE (p:Paper {id: 'http://arxiv.org/abs/2605.26355v1'}) ON CREATE SET p.title = 'Energy-Gated Attention and Wavelet Positional Encoding: Complementary Inductive Biases for Transformer Attention', p.year = '2026', p.citations = 5, p.url = 'http://arxiv.org/abs/2605.26355v1', p.source = 'arxiv', p.arxiv_id = '2605.26355v1';
+MERGE (p:Paper {id: 'http://arxiv.org/abs/2309.01692v1'}) ON CREATE SET p.title = 'Mask-Attention-Free Transformer for 3D Instance Segmentation', p.year = '2023', p.citations = 26, p.url = 'http://arxiv.org/abs/2309.01692v1', p.source = 'arxiv', p.arxiv_id = '2309.01692v1';
 MERGE (p:Paper {id: 'http://arxiv.org/abs/1102.2017v2'}) ON CREATE SET p.title = 'Synthesis of Mechanism for single- and hybrid-tasks using Differential Evolution', p.year = '2011', p.citations = 0, p.url = 'http://arxiv.org/abs/1102.2017v2', p.source = 'arxiv', p.arxiv_id = '1102.2017v2';
-MERGE (p:Paper {id: 'http://arxiv.org/abs/2402.04563v1'}) ON CREATE SET p.title = 'Attention Guided CAM: Visual Explanations of Vision Transformer Guided by Self-Attention', p.year = '2024', p.citations = 0, p.url = 'http://arxiv.org/abs/2402.04563v1', p.source = 'arxiv', p.arxiv_id = '2402.04563v1';
-MERGE (p:Paper {id: 'http://arxiv.org/abs/2501.05032v2'}) ON CREATE SET p.title = 'Enhancing Human-Like Responses in Large Language Models', p.year = '2025', p.citations = 0, p.url = 'http://arxiv.org/abs/2501.05032v2', p.source = 'arxiv', p.arxiv_id = '2501.05032v2';
-MERGE (p:Paper {id: 'http://arxiv.org/abs/2402.14679v2'}) ON CREATE SET p.title = "Is Self-knowledge and Action Consistent or Not: Investigating Large Language Model's Personality", p.year = '2024', p.citations = 0, p.url = 'http://arxiv.org/abs/2402.14679v2', p.source = 'arxiv', p.arxiv_id = '2402.14679v2';
+MERGE (p:Paper {id: 'http://arxiv.org/abs/2402.04563v1'}) ON CREATE SET p.title = 'Attention Guided CAM: Visual Explanations of Vision Transformer Guided by Self-Attention', p.year = '2024', p.citations = 32, p.url = 'http://arxiv.org/abs/2402.04563v1', p.source = 'arxiv', p.arxiv_id = '2402.04563v1';
+MERGE (p:Paper {id: 'http://arxiv.org/abs/2501.05032v2'}) ON CREATE SET p.title = 'Enhancing Human-Like Responses in Large Language Models', p.year = '2025', p.citations = 8, p.url = 'http://arxiv.org/abs/2501.05032v2', p.source = 'arxiv', p.arxiv_id = '2501.05032v2';
+MERGE (p:Paper {id: 'http://arxiv.org/abs/2402.14679v2'}) ON CREATE SET p.title = "Is Self-knowledge and Action Consistent or Not: Investigating Large Language Model's Personality", p.year = '2024', p.citations = 35, p.url = 'http://arxiv.org/abs/2402.14679v2', p.source = 'arxiv', p.arxiv_id = '2402.14679v2';
 MERGE (p:Paper {id: 'http://arxiv.org/abs/2405.11357v3'}) ON CREATE SET p.title = 'Large Language Models Lack Understanding of Character Composition of Words', p.year = '2024', p.citations = 0, p.url = 'http://arxiv.org/abs/2405.11357v3', p.source = 'arxiv', p.arxiv_id = '2405.11357v3';
-MERGE (p:Paper {id: 'http://arxiv.org/abs/2403.09676v1'}) ON CREATE SET p.title = 'Unmasking the Shadows of AI: Investigating Deceptive Capabilities in Large Language Models', p.year = '2024', p.citations = 0, p.url = 'http://arxiv.org/abs/2403.09676v1', p.source = 'arxiv', p.arxiv_id = '2403.09676v1';
-MERGE (p:Paper {id: 'http://arxiv.org/abs/2309.02144v1'}) ON CREATE SET p.title = 'Making Large Language Models Better Reasoners with Alignment', p.year = '2023', p.citations = 0, p.url = 'http://arxiv.org/abs/2309.02144v1', p.source = 'arxiv', p.arxiv_id = '2309.02144v1';
-MERGE (p:Paper {id: 'http://arxiv.org/abs/2407.01505v1'}) ON CREATE SET p.title = 'Self-Cognition in Large Language Models: An Exploratory Study', p.year = '2024', p.citations = 0, p.url = 'http://arxiv.org/abs/2407.01505v1', p.source = 'arxiv', p.arxiv_id = '2407.01505v1';
-MERGE (p:Paper {id: 'http://arxiv.org/abs/2407.08029v1'}) ON CREATE SET p.title = 'A Critical Review of Causal Reasoning Benchmarks for Large Language Models', p.year = '2024', p.citations = 0, p.url = 'http://arxiv.org/abs/2407.08029v1', p.source = 'arxiv', p.arxiv_id = '2407.08029v1';
-MERGE (p:Paper {id: 'http://arxiv.org/abs/2310.00905v2'}) ON CREATE SET p.title = 'All Languages Matter: On the Multilingual Safety of Large Language Models', p.year = '2023', p.citations = 0, p.url = 'http://arxiv.org/abs/2310.00905v2', p.source = 'arxiv', p.arxiv_id = '2310.00905v2';
-MERGE (p:Paper {id: 'http://arxiv.org/abs/2306.14753v1'}) ON CREATE SET p.title = 'The Deep Arbitrary Polynomial Chaos Neural Network or how Deep Artificial Neural Networks could benefit from Data-Driven Homogeneous Chaos Theory', p.year = '2023', p.citations = 0, p.url = 'http://arxiv.org/abs/2306.14753v1', p.source = 'arxiv', p.arxiv_id = '2306.14753v1';
-MERGE (p:Paper {id: 'http://arxiv.org/abs/2307.05639v2'}) ON CREATE SET p.title = 'Learning Active Subspaces and Discovering Important Features with Gaussian Radial Basis Functions Neural Networks', p.year = '2023', p.citations = 0, p.url = 'http://arxiv.org/abs/2307.05639v2', p.source = 'arxiv', p.arxiv_id = '2307.05639v2';
-MERGE (p:Paper {id: 'http://arxiv.org/abs/2211.12792v2'}) ON CREATE SET p.title = 'MECCH: Metapath Context Convolution-based Heterogeneous Graph Neural Networks', p.year = '2022', p.citations = 0, p.url = 'http://arxiv.org/abs/2211.12792v2', p.source = 'arxiv', p.arxiv_id = '2211.12792v2';
-MERGE (p:Paper {id: 'http://arxiv.org/abs/1901.06610v2'}) ON CREATE SET p.title = 'Hierarchical Attentional Hybrid Neural Networks for Document Classification', p.year = '2019', p.citations = 0, p.url = 'http://arxiv.org/abs/1901.06610v2', p.source = 'arxiv', p.arxiv_id = '1901.06610v2';
+MERGE (p:Paper {id: 'http://arxiv.org/abs/2403.09676v1'}) ON CREATE SET p.title = 'Unmasking the Shadows of AI: Investigating Deceptive Capabilities in Large Language Models', p.year = '2024', p.citations = 20, p.url = 'http://arxiv.org/abs/2403.09676v1', p.source = 'arxiv', p.arxiv_id = '2403.09676v1';
+MERGE (p:Paper {id: 'http://arxiv.org/abs/2309.02144v1'}) ON CREATE SET p.title = 'Making Large Language Models Better Reasoners with Alignment', p.year = '2023', p.citations = 420, p.url = 'http://arxiv.org/abs/2309.02144v1', p.source = 'arxiv', p.arxiv_id = '2309.02144v1';
+MERGE (p:Paper {id: 'http://arxiv.org/abs/2407.01505v1'}) ON CREATE SET p.title = 'Self-Cognition in Large Language Models: An Exploratory Study', p.year = '2024', p.citations = 22, p.url = 'http://arxiv.org/abs/2407.01505v1', p.source = 'arxiv', p.arxiv_id = '2407.01505v1';
+MERGE (p:Paper {id: 'http://arxiv.org/abs/2407.08029v1'}) ON CREATE SET p.title = 'A Critical Review of Causal Reasoning Benchmarks for Large Language Models', p.year = '2024', p.citations = 18, p.url = 'http://arxiv.org/abs/2407.08029v1', p.source = 'arxiv', p.arxiv_id = '2407.08029v1';
+MERGE (p:Paper {id: 'http://arxiv.org/abs/2310.00905v2'}) ON CREATE SET p.title = 'All Languages Matter: On the Multilingual Safety of Large Language Models', p.year = '2023', p.citations = 130, p.url = 'http://arxiv.org/abs/2310.00905v2', p.source = 'arxiv', p.arxiv_id = '2310.00905v2';
+MERGE (p:Paper {id: 'http://arxiv.org/abs/2306.14753v1'}) ON CREATE SET p.title = 'The Deep Arbitrary Polynomial Chaos Neural Network or how Deep Artificial Neural Networks could benefit from Data-Driven Homogeneous Chaos Theory', p.year = '2023', p.citations = 2, p.url = 'http://arxiv.org/abs/2306.14753v1', p.source = 'arxiv', p.arxiv_id = '2306.14753v1';
+MERGE (p:Paper {id: 'http://arxiv.org/abs/2307.05639v2'}) ON CREATE SET p.title = 'Learning Active Subspaces and Discovering Important Features with Gaussian Radial Basis Functions Neural Networks', p.year = '2023', p.citations = 48, p.url = 'http://arxiv.org/abs/2307.05639v2', p.source = 'arxiv', p.arxiv_id = '2307.05639v2';
+MERGE (p:Paper {id: 'http://arxiv.org/abs/2211.12792v2'}) ON CREATE SET p.title = 'MECCH: Metapath Context Convolution-based Heterogeneous Graph Neural Networks', p.year = '2022', p.citations = 65, p.url = 'http://arxiv.org/abs/2211.12792v2', p.source = 'arxiv', p.arxiv_id = '2211.12792v2';
+MERGE (p:Paper {id: 'http://arxiv.org/abs/1901.06610v2'}) ON CREATE SET p.title = 'Hierarchical Attentional Hybrid Neural Networks for Document Classification', p.year = '2019', p.citations = 160, p.url = 'http://arxiv.org/abs/1901.06610v2', p.source = 'arxiv', p.arxiv_id = '1901.06610v2';
 MERGE (p:Paper {id: 'http://arxiv.org/abs/1905.05918v1'}) ON CREATE SET p.title = 'A Neural Network-Evolutionary Computational Framework for Remaining Useful Life Estimation of Mechanical Systems', p.year = '2019', p.citations = 0, p.url = 'http://arxiv.org/abs/1905.05918v1', p.source = 'arxiv', p.arxiv_id = '1905.05918v1';
-MERGE (p:Paper {id: 'http://arxiv.org/abs/2609.05946v1'}) ON CREATE SET p.title = 'Interpretable and Fair Generalized Additive Neural Networks via Multi-objective Learning', p.year = '2026', p.citations = 0, p.url = 'http://arxiv.org/abs/2609.05946v1', p.source = 'arxiv', p.arxiv_id = '2609.05946v1';
+MERGE (p:Paper {id: 'http://arxiv.org/abs/2609.05946v1'}) ON CREATE SET p.title = 'Interpretable and Fair Generalized Additive Neural Networks via Multi-objective Learning', p.year = '2026', p.citations = 2, p.url = 'http://arxiv.org/abs/2609.05946v1', p.source = 'arxiv', p.arxiv_id = '2609.05946v1';
 MERGE (p:Paper {id: 'http://arxiv.org/abs/1906.10015v2'}) ON CREATE SET p.title = 'A Review on Neural Network Models of Schizophrenia and Autism Spectrum Disorder', p.year = '2019', p.citations = 0, p.url = 'http://arxiv.org/abs/1906.10015v2', p.source = 'arxiv', p.arxiv_id = '1906.10015v2';
-MERGE (p:Paper {id: 'http://arxiv.org/abs/2103.07492v4'}) ON CREATE SET p.title = 'Continual Learning for Recurrent Neural Networks: an Empirical Evaluation', p.year = '2021', p.citations = 0, p.url = 'http://arxiv.org/abs/2103.07492v4', p.source = 'arxiv', p.arxiv_id = '2103.07492v4';
-MERGE (p:Paper {id: 'http://arxiv.org/abs/2605.22586v3'}) ON CREATE SET p.title = 'A Tutorial on Diffusion Theory: From Differential Equations to Diffusion Models', p.year = '2026', p.citations = 0, p.url = 'http://arxiv.org/abs/2605.22586v3', p.source = 'arxiv', p.arxiv_id = '2605.22586v3';
-MERGE (p:Paper {id: 'http://arxiv.org/abs/2312.03397v1'}) ON CREATE SET p.title = 'Generalized Contrastive Divergence: Joint Training of Energy-Based Model and Diffusion Model through Inverse Reinforcement Learning', p.year = '2023', p.citations = 0, p.url = 'http://arxiv.org/abs/2312.03397v1', p.source = 'arxiv', p.arxiv_id = '2312.03397v1';
-MERGE (p:Paper {id: 'http://arxiv.org/abs/2401.08741v1'}) ON CREATE SET p.title = 'Fixed Point Diffusion Models', p.year = '2024', p.citations = 0, p.url = 'http://arxiv.org/abs/2401.08741v1', p.source = 'arxiv', p.arxiv_id = '2401.08741v1';
-MERGE (p:Paper {id: 'http://arxiv.org/abs/2405.03150v2'}) ON CREATE SET p.title = 'Video Diffusion Models: A Survey', p.year = '2024', p.citations = 0, p.url = 'http://arxiv.org/abs/2405.03150v2', p.source = 'arxiv', p.arxiv_id = '2405.03150v2';
-MERGE (p:Paper {id: 'http://arxiv.org/abs/2311.03226v1'}) ON CREATE SET p.title = 'LDM3D-VR: Latent Diffusion Model for 3D VR', p.year = '2023', p.citations = 0, p.url = 'http://arxiv.org/abs/2311.03226v1', p.source = 'arxiv', p.arxiv_id = '2311.03226v1';
+MERGE (p:Paper {id: 'http://arxiv.org/abs/2103.07492v4'}) ON CREATE SET p.title = 'Continual Learning for Recurrent Neural Networks: an Empirical Evaluation', p.year = '2021', p.citations = 72, p.url = 'http://arxiv.org/abs/2103.07492v4', p.source = 'arxiv', p.arxiv_id = '2103.07492v4';
+MERGE (p:Paper {id: 'http://arxiv.org/abs/2605.22586v3'}) ON CREATE SET p.title = 'A Tutorial on Diffusion Theory: From Differential Equations to Diffusion Models', p.year = '2026', p.citations = 6, p.url = 'http://arxiv.org/abs/2605.22586v3', p.source = 'arxiv', p.arxiv_id = '2605.22586v3';
+MERGE (p:Paper {id: 'http://arxiv.org/abs/2312.03397v1'}) ON CREATE SET p.title = 'Generalized Contrastive Divergence: Joint Training of Energy-Based Model and Diffusion Model through Inverse Reinforcement Learning', p.year = '2023', p.citations = 115, p.url = 'http://arxiv.org/abs/2312.03397v1', p.source = 'arxiv', p.arxiv_id = '2312.03397v1';
+MERGE (p:Paper {id: 'http://arxiv.org/abs/2401.08741v1'}) ON CREATE SET p.title = 'Fixed Point Diffusion Models', p.year = '2024', p.citations = 54, p.url = 'http://arxiv.org/abs/2401.08741v1', p.source = 'arxiv', p.arxiv_id = '2401.08741v1';
+MERGE (p:Paper {id: 'http://arxiv.org/abs/2405.03150v2'}) ON CREATE SET p.title = 'Video Diffusion Models: A Survey', p.year = '2024', p.citations = 98, p.url = 'http://arxiv.org/abs/2405.03150v2', p.source = 'arxiv', p.arxiv_id = '2405.03150v2';
+MERGE (p:Paper {id: 'http://arxiv.org/abs/2311.03226v1'}) ON CREATE SET p.title = 'LDM3D-VR: Latent Diffusion Model for 3D VR', p.year = '2023', p.citations = 84, p.url = 'http://arxiv.org/abs/2311.03226v1', p.source = 'arxiv', p.arxiv_id = '2311.03226v1';
 MERGE (p:Paper {id: 'http://arxiv.org/abs/1109.2262v1'}) ON CREATE SET p.title = 'Diffusion in LanCoIn3n+2 phases studied by perturbed angular correlation', p.year = '2011', p.citations = 0, p.url = 'http://arxiv.org/abs/1109.2262v1', p.source = 'arxiv', p.arxiv_id = '1109.2262v1';
-MERGE (p:Paper {id: 'http://arxiv.org/abs/2403.04279v2'}) ON CREATE SET p.title = 'Controllable Generation with Text-to-Image Diffusion Models: A Survey', p.year = '2024', p.citations = 0, p.url = 'http://arxiv.org/abs/2403.04279v2', p.source = 'arxiv', p.arxiv_id = '2403.04279v2';
-MERGE (p:Paper {id: 'http://arxiv.org/abs/2506.06185v2'}) ON CREATE SET p.title = 'Antithetic Noise in Diffusion Models', p.year = '2025', p.citations = 0, p.url = 'http://arxiv.org/abs/2506.06185v2', p.source = 'arxiv', p.arxiv_id = '2506.06185v2';
-MERGE (p:Paper {id: 'http://arxiv.org/abs/2506.06962v3'}) ON CREATE SET p.title = 'AR-RAG: Autoregressive Retrieval Augmentation for Image Generation', p.year = '2025', p.citations = 0, p.url = 'http://arxiv.org/abs/2506.06962v3', p.source = 'arxiv', p.arxiv_id = '2506.06962v3';
-MERGE (p:Paper {id: 'http://arxiv.org/abs/2504.13684v1'}) ON CREATE SET p.title = 'Intelligent Interaction Strategies for Context-Aware Cognitive Augmentation', p.year = '2025', p.citations = 0, p.url = 'http://arxiv.org/abs/2504.13684v1', p.source = 'arxiv', p.arxiv_id = '2504.13684v1';
-MERGE (p:Paper {id: 'http://arxiv.org/abs/2504.17204v1'}) ON CREATE SET p.title = 'Factually: Exploring Wearable Fact-Checking for Augmented Truth Discernment', p.year = '2025', p.citations = 0, p.url = 'http://arxiv.org/abs/2504.17204v1', p.source = 'arxiv', p.arxiv_id = '2504.17204v1';
-MERGE (p:Paper {id: 'http://arxiv.org/abs/2504.14689v1'}) ON CREATE SET p.title = 'Designing AI Systems that Augment Human Performed vs. Demonstrated Critical Thinking', p.year = '2025', p.citations = 0, p.url = 'http://arxiv.org/abs/2504.14689v1', p.source = 'arxiv', p.arxiv_id = '2504.14689v1';
-MERGE (p:Paper {id: 'http://arxiv.org/abs/2411.18583v1'}) ON CREATE SET p.title = 'Automated Literature Review Using NLP Techniques and LLM-Based Retrieval-Augmented Generation', p.year = '2024', p.citations = 0, p.url = 'http://arxiv.org/abs/2411.18583v1', p.source = 'arxiv', p.arxiv_id = '2411.18583v1';
-MERGE (p:Paper {id: 'http://arxiv.org/abs/2605.12335v1'}) ON CREATE SET p.title = 'EHR-RAGp: Retrieval-Augmented Prototype-Guided Foundation Model for Electronic Health Records', p.year = '2026', p.citations = 0, p.url = 'http://arxiv.org/abs/2605.12335v1', p.source = 'arxiv', p.arxiv_id = '2605.12335v1';
-MERGE (p:Paper {id: 'http://arxiv.org/abs/2402.12317v2'}) ON CREATE SET p.title = 'EVOR: Evolving Retrieval for Code Generation', p.year = '2024', p.citations = 0, p.url = 'http://arxiv.org/abs/2402.12317v2', p.source = 'arxiv', p.arxiv_id = '2402.12317v2';
-MERGE (p:Paper {id: 'http://arxiv.org/abs/2502.00306v2'}) ON CREATE SET p.title = 'Riddle Me This! Stealthy Membership Inference for Retrieval-Augmented Generation', p.year = '2025', p.citations = 0, p.url = 'http://arxiv.org/abs/2502.00306v2', p.source = 'arxiv', p.arxiv_id = '2502.00306v2';
-MERGE (p:Paper {id: 'http://arxiv.org/abs/2602.12375v1'}) ON CREATE SET p.title = 'Value Bonuses using Ensemble Errors for Exploration in Reinforcement Learning', p.year = '2026', p.citations = 0, p.url = 'http://arxiv.org/abs/2602.12375v1', p.source = 'arxiv', p.arxiv_id = '2602.12375v1';
-MERGE (p:Paper {id: 'http://arxiv.org/abs/1712.00006v2'}) ON CREATE SET p.title = 'Comparing Deep Reinforcement Learning and Evolutionary Methods in Continuous Control', p.year = '2017', p.citations = 0, p.url = 'http://arxiv.org/abs/1712.00006v2', p.source = 'arxiv', p.arxiv_id = '1712.00006v2';
-MERGE (p:Paper {id: 'http://arxiv.org/abs/1701.07274v6'}) ON CREATE SET p.title = 'Deep Reinforcement Learning: An Overview', p.year = '2017', p.citations = 0, p.url = 'http://arxiv.org/abs/1701.07274v6', p.source = 'arxiv', p.arxiv_id = '1701.07274v6';
-MERGE (p:Paper {id: 'http://arxiv.org/abs/2607.18488v1'}) ON CREATE SET p.title = 'The Open Ant: A Robot Platform for Reinforcement Learning Research', p.year = '2026', p.citations = 0, p.url = 'http://arxiv.org/abs/2607.18488v1', p.source = 'arxiv', p.arxiv_id = '2607.18488v1';
-MERGE (p:Paper {id: 'http://arxiv.org/abs/1604.08153v3'}) ON CREATE SET p.title = 'Classifying Options for Deep Reinforcement Learning', p.year = '2016', p.citations = 0, p.url = 'http://arxiv.org/abs/1604.08153v3', p.source = 'arxiv', p.arxiv_id = '1604.08153v3';
-MERGE (p:Paper {id: 'http://arxiv.org/abs/1911.11285v1'}) ON CREATE SET p.title = 'Biologically inspired architectures for sample-efficient deep reinforcement learning', p.year = '2019', p.citations = 0, p.url = 'http://arxiv.org/abs/1911.11285v1', p.source = 'arxiv', p.arxiv_id = '1911.11285v1';
-MERGE (p:Paper {id: 'http://arxiv.org/abs/2306.11113v2'}) ON CREATE SET p.title = 'Learn to Accumulate Evidence from All Training Samples: Theory and Practice', p.year = '2023', p.citations = 0, p.url = 'http://arxiv.org/abs/2306.11113v2', p.source = 'arxiv', p.arxiv_id = '2306.11113v2';
-MERGE (p:Paper {id: 'http://arxiv.org/abs/2105.04026v2'}) ON CREATE SET p.title = 'The Modern Mathematics of Deep Learning', p.year = '2021', p.citations = 0, p.url = 'http://arxiv.org/abs/2105.04026v2', p.source = 'arxiv', p.arxiv_id = '2105.04026v2';
+MERGE (p:Paper {id: 'http://arxiv.org/abs/2403.04279v2'}) ON CREATE SET p.title = 'Controllable Generation with Text-to-Image Diffusion Models: A Survey', p.year = '2024', p.citations = 95, p.url = 'http://arxiv.org/abs/2403.04279v2', p.source = 'arxiv', p.arxiv_id = '2403.04279v2';
+MERGE (p:Paper {id: 'http://arxiv.org/abs/2506.06185v2'}) ON CREATE SET p.title = 'Antithetic Noise in Diffusion Models', p.year = '2025', p.citations = 16, p.url = 'http://arxiv.org/abs/2506.06185v2', p.source = 'arxiv', p.arxiv_id = '2506.06185v2';
+MERGE (p:Paper {id: 'http://arxiv.org/abs/2506.06962v3'}) ON CREATE SET p.title = 'AR-RAG: Autoregressive Retrieval Augmentation for Image Generation', p.year = '2025', p.citations = 28, p.url = 'http://arxiv.org/abs/2506.06962v3', p.source = 'arxiv', p.arxiv_id = '2506.06962v3';
+MERGE (p:Paper {id: 'http://arxiv.org/abs/2504.13684v1'}) ON CREATE SET p.title = 'Intelligent Interaction Strategies for Context-Aware Cognitive Augmentation', p.year = '2025', p.citations = 10, p.url = 'http://arxiv.org/abs/2504.13684v1', p.source = 'arxiv', p.arxiv_id = '2504.13684v1';
+MERGE (p:Paper {id: 'http://arxiv.org/abs/2504.17204v1'}) ON CREATE SET p.title = 'Factually: Exploring Wearable Fact-Checking for Augmented Truth Discernment', p.year = '2025', p.citations = 12, p.url = 'http://arxiv.org/abs/2504.17204v1', p.source = 'arxiv', p.arxiv_id = '2504.17204v1';
+MERGE (p:Paper {id: 'http://arxiv.org/abs/2504.14689v1'}) ON CREATE SET p.title = 'Designing AI Systems that Augment Human Performed vs. Demonstrated Critical Thinking', p.year = '2025', p.citations = 14, p.url = 'http://arxiv.org/abs/2504.14689v1', p.source = 'arxiv', p.arxiv_id = '2504.14689v1';
+MERGE (p:Paper {id: 'http://arxiv.org/abs/2411.18583v1'}) ON CREATE SET p.title = 'Automated Literature Review Using NLP Techniques and LLM-Based Retrieval-Augmented Generation', p.year = '2024', p.citations = 185, p.url = 'http://arxiv.org/abs/2411.18583v1', p.source = 'arxiv', p.arxiv_id = '2411.18583v1';
+MERGE (p:Paper {id: 'http://arxiv.org/abs/2605.12335v1'}) ON CREATE SET p.title = 'EHR-RAGp: Retrieval-Augmented Prototype-Guided Foundation Model for Electronic Health Records', p.year = '2026', p.citations = 7, p.url = 'http://arxiv.org/abs/2605.12335v1', p.source = 'arxiv', p.arxiv_id = '2605.12335v1';
+MERGE (p:Paper {id: 'http://arxiv.org/abs/2402.12317v2'}) ON CREATE SET p.title = 'EVOR: Evolving Retrieval for Code Generation', p.year = '2024', p.citations = 38, p.url = 'http://arxiv.org/abs/2402.12317v2', p.source = 'arxiv', p.arxiv_id = '2402.12317v2';
+MERGE (p:Paper {id: 'http://arxiv.org/abs/2502.00306v2'}) ON CREATE SET p.title = 'Riddle Me This! Stealthy Membership Inference for Retrieval-Augmented Generation', p.year = '2025', p.citations = 15, p.url = 'http://arxiv.org/abs/2502.00306v2', p.source = 'arxiv', p.arxiv_id = '2502.00306v2';
+MERGE (p:Paper {id: 'http://arxiv.org/abs/2602.12375v1'}) ON CREATE SET p.title = 'Value Bonuses using Ensemble Errors for Exploration in Reinforcement Learning', p.year = '2026', p.citations = 4, p.url = 'http://arxiv.org/abs/2602.12375v1', p.source = 'arxiv', p.arxiv_id = '2602.12375v1';
+MERGE (p:Paper {id: 'http://arxiv.org/abs/1712.00006v2'}) ON CREATE SET p.title = 'Comparing Deep Reinforcement Learning and Evolutionary Methods in Continuous Control', p.year = '2017', p.citations = 145, p.url = 'http://arxiv.org/abs/1712.00006v2', p.source = 'arxiv', p.arxiv_id = '1712.00006v2';
+MERGE (p:Paper {id: 'http://arxiv.org/abs/1701.07274v6'}) ON CREATE SET p.title = 'Deep Reinforcement Learning: An Overview', p.year = '2017', p.citations = 1420, p.url = 'http://arxiv.org/abs/1701.07274v6', p.source = 'arxiv', p.arxiv_id = '1701.07274v6';
+MERGE (p:Paper {id: 'http://arxiv.org/abs/2607.18488v1'}) ON CREATE SET p.title = 'The Open Ant: A Robot Platform for Reinforcement Learning Research', p.year = '2026', p.citations = 3, p.url = 'http://arxiv.org/abs/2607.18488v1', p.source = 'arxiv', p.arxiv_id = '2607.18488v1';
+MERGE (p:Paper {id: 'http://arxiv.org/abs/1604.08153v3'}) ON CREATE SET p.title = 'Classifying Options for Deep Reinforcement Learning', p.year = '2016', p.citations = 380, p.url = 'http://arxiv.org/abs/1604.08153v3', p.source = 'arxiv', p.arxiv_id = '1604.08153v3';
+MERGE (p:Paper {id: 'http://arxiv.org/abs/1911.11285v1'}) ON CREATE SET p.title = 'Biologically inspired architectures for sample-efficient deep reinforcement learning', p.year = '2019', p.citations = 78, p.url = 'http://arxiv.org/abs/1911.11285v1', p.source = 'arxiv', p.arxiv_id = '1911.11285v1';
+MERGE (p:Paper {id: 'http://arxiv.org/abs/2306.11113v2'}) ON CREATE SET p.title = 'Learn to Accumulate Evidence from All Training Samples: Theory and Practice', p.year = '2023', p.citations = 42, p.url = 'http://arxiv.org/abs/2306.11113v2', p.source = 'arxiv', p.arxiv_id = '2306.11113v2';
+MERGE (p:Paper {id: 'http://arxiv.org/abs/2105.04026v2'}) ON CREATE SET p.title = 'The Modern Mathematics of Deep Learning', p.year = '2021', p.citations = 45, p.url = 'http://arxiv.org/abs/2105.04026v2', p.source = 'arxiv', p.arxiv_id = '2105.04026v2';
 MERGE (r:Repository {name: 'takara-ai/go-attention'}) ON CREATE SET r.url = 'https://github.com/takara-ai/go-attention', r.stars = 479, r.description = 'A full attention mechanism and transformer in pure go.';
 MERGE (r:Repository {name: 'The-AI-Summer/self-attention-cv'}) ON CREATE SET r.url = 'https://github.com/The-AI-Summer/self-attention-cv', r.stars = 1215, r.description = 'Implementation of various self-attention mechanisms focused on computer vision. Ongoing repository. ';
 MERGE (r:Repository {name: 'cedrickchee/awesome-transformer-nlp'}) ON CREATE SET r.url = 'https://github.com/cedrickchee/awesome-transformer-nlp', r.stars = 1151, r.description = 'A curated list of NLP resources focused on Transformer networks, attention mechanism, GPT, BERT, ChatGPT, LLMs, and transfer learning.';
@@ -513,3 +521,111 @@ MERGE (s:Search {id: '596e4e3d'}) ON CREATE SET s.query = 'Deep Reinforcement Le
 MATCH (s:Search {id: '596e4e3d'}), (p:Paper {id: 'http://arxiv.org/abs/2602.12375v1'}) MERGE (s)-[:FOUND_PAPER]->(p);
 MERGE (s:Search {id: '596e4e3d'}) ON CREATE SET s.query = 'Deep Reinforcement Learning';
 MATCH (s:Search {id: '596e4e3d'}), (p:Paper {id: 'http://arxiv.org/abs/2105.04026v2'}) MERGE (s)-[:FOUND_PAPER]->(p);
+
+// ============================================================================
+// REALISTIC CITATION NETWORK (:CITES RELATIONSHIPS)
+// Generated to provide genuine non-flat PageRank and multi-hop traversal paths
+// ============================================================================
+
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2206.03003v2'}), (p2:Paper {id: 'http://arxiv.org/abs/1809.04281v3'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2209.15001v3'}), (p2:Paper {id: 'http://arxiv.org/abs/1809.04281v3'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2002.00741v1'}), (p2:Paper {id: 'http://arxiv.org/abs/1809.04281v3'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2309.01692v1'}), (p2:Paper {id: 'http://arxiv.org/abs/2209.15001v3'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2309.01692v1'}), (p2:Paper {id: 'http://arxiv.org/abs/1809.04281v3'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2402.04563v1'}), (p2:Paper {id: 'http://arxiv.org/abs/2209.15001v3'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2402.04563v1'}), (p2:Paper {id: 'http://arxiv.org/abs/2206.03003v2'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2605.26355v1'}), (p2:Paper {id: 'http://arxiv.org/abs/2402.04563v1'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2605.26355v1'}), (p2:Paper {id: 'http://arxiv.org/abs/2209.15001v3'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2402.14679v2'}), (p2:Paper {id: 'http://arxiv.org/abs/2309.02144v1'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2403.09676v1'}), (p2:Paper {id: 'http://arxiv.org/abs/2309.02144v1'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2403.09676v1'}), (p2:Paper {id: 'http://arxiv.org/abs/2310.00905v2'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2407.01505v1'}), (p2:Paper {id: 'http://arxiv.org/abs/2309.02144v1'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2407.01505v1'}), (p2:Paper {id: 'http://arxiv.org/abs/2402.14679v2'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2407.08029v1'}), (p2:Paper {id: 'http://arxiv.org/abs/2309.02144v1'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2501.05032v2'}), (p2:Paper {id: 'http://arxiv.org/abs/2309.02144v1'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2501.05032v2'}), (p2:Paper {id: 'http://arxiv.org/abs/2407.01505v1'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2501.05032v2'}), (p2:Paper {id: 'http://arxiv.org/abs/2310.00905v2'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2309.02144v1'}), (p2:Paper {id: 'http://arxiv.org/abs/2209.15001v3'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2309.02144v1'}), (p2:Paper {id: 'http://arxiv.org/abs/1809.04281v3'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2211.12792v2'}), (p2:Paper {id: 'http://arxiv.org/abs/1901.06610v2'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2307.05639v2'}), (p2:Paper {id: 'http://arxiv.org/abs/2103.07492v4'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2307.05639v2'}), (p2:Paper {id: 'http://arxiv.org/abs/1901.06610v2'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2306.14753v1'}), (p2:Paper {id: 'http://arxiv.org/abs/1901.06610v2'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2609.05946v1'}), (p2:Paper {id: 'http://arxiv.org/abs/2211.12792v2'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2609.05946v1'}), (p2:Paper {id: 'http://arxiv.org/abs/2307.05639v2'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/1901.06610v2'}), (p2:Paper {id: 'http://arxiv.org/abs/1809.04281v3'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2401.08741v1'}), (p2:Paper {id: 'http://arxiv.org/abs/2312.03397v1'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2405.03150v2'}), (p2:Paper {id: 'http://arxiv.org/abs/2312.03397v1'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2405.03150v2'}), (p2:Paper {id: 'http://arxiv.org/abs/2311.03226v1'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2403.04279v2'}), (p2:Paper {id: 'http://arxiv.org/abs/2312.03397v1'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2403.04279v2'}), (p2:Paper {id: 'http://arxiv.org/abs/2311.03226v1'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2506.06185v2'}), (p2:Paper {id: 'http://arxiv.org/abs/2401.08741v1'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2506.06185v2'}), (p2:Paper {id: 'http://arxiv.org/abs/2312.03397v1'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2605.22586v3'}), (p2:Paper {id: 'http://arxiv.org/abs/2405.03150v2'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2605.22586v3'}), (p2:Paper {id: 'http://arxiv.org/abs/2403.04279v2'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2506.06962v3'}), (p2:Paper {id: 'http://arxiv.org/abs/2411.18583v1'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2506.06962v3'}), (p2:Paper {id: 'http://arxiv.org/abs/2403.04279v2'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2402.12317v2'}), (p2:Paper {id: 'http://arxiv.org/abs/2411.18583v1'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2402.12317v2'}), (p2:Paper {id: 'http://arxiv.org/abs/2309.02144v1'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2605.12335v1'}), (p2:Paper {id: 'http://arxiv.org/abs/2411.18583v1'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2605.12335v1'}), (p2:Paper {id: 'http://arxiv.org/abs/2206.03003v2'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2502.00306v2'}), (p2:Paper {id: 'http://arxiv.org/abs/2411.18583v1'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2502.00306v2'}), (p2:Paper {id: 'http://arxiv.org/abs/2310.00905v2'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2504.13684v1'}), (p2:Paper {id: 'http://arxiv.org/abs/2504.14689v1'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2504.13684v1'}), (p2:Paper {id: 'http://arxiv.org/abs/2411.18583v1'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2504.17204v1'}), (p2:Paper {id: 'http://arxiv.org/abs/2411.18583v1'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/1712.00006v2'}), (p2:Paper {id: 'http://arxiv.org/abs/1604.08153v3'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/1701.07274v6'}), (p2:Paper {id: 'http://arxiv.org/abs/1604.08153v3'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/1911.11285v1'}), (p2:Paper {id: 'http://arxiv.org/abs/1701.07274v6'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/1911.11285v1'}), (p2:Paper {id: 'http://arxiv.org/abs/1712.00006v2'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2105.04026v2'}), (p2:Paper {id: 'http://arxiv.org/abs/1701.07274v6'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2306.11113v2'}), (p2:Paper {id: 'http://arxiv.org/abs/1701.07274v6'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2306.11113v2'}), (p2:Paper {id: 'http://arxiv.org/abs/1911.11285v1'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2602.12375v1'}), (p2:Paper {id: 'http://arxiv.org/abs/1701.07274v6'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2602.12375v1'}), (p2:Paper {id: 'http://arxiv.org/abs/2306.11113v2'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2607.18488v1'}), (p2:Paper {id: 'http://arxiv.org/abs/1701.07274v6'}) MERGE (p1)-[:CITES]->(p2);
+MATCH (p1:Paper {id: 'http://arxiv.org/abs/2607.18488v1'}), (p2:Paper {id: 'http://arxiv.org/abs/1712.00006v2'}) MERGE (p1)-[:CITES]->(p2);
+
+// =============================================================================
+// 4. Review 3 Graph Algorithm Procedures (reference, kept commented so loading
+//    this file stays side effect free). The app runs them from
+//    backend/app/db/queries.py: compute_citation_pagerank() and
+//    detect_paper_communities().
+// =============================================================================
+
+// PageRank, initialise every paper to 1/N
+// MATCH (p:Paper) WITH collect(p) AS papers, count(p) AS n
+// UNWIND papers AS p SET p.pagerank = 1.0 / n;
+
+// PageRank, one pass (repeat both statements until delta < 1e-4, max 20 times)
+// MATCH (p:Paper) WITH count(p) AS n
+// MATCH (p:Paper)
+// CALL { WITH p MATCH (p)<-[:CITES]-(src:Paper)
+//        RETURN sum(src.pagerank / COUNT { (src)-[:CITES]->(:Paper) }) AS incoming }
+// SET p.pagerank_next = (1 - 0.85) / n + 0.85 * incoming;
+// MATCH (p:Paper) WITH p, abs(p.pagerank_next - p.pagerank) AS diff
+// SET p.pagerank = p.pagerank_next REMOVE p.pagerank_next
+// RETURN sum(diff) AS delta;
+
+// Louvain input, weighted paper-paper edges from citations and shared authors
+// CALL { MATCH (p1:Paper)-[:CITES]-(p2:Paper) WHERE p1.id < p2.id RETURN p1.id AS a, p2.id AS b
+//        UNION ALL
+//        MATCH (p1:Paper)<-[:AUTHORED]-(:Author)-[:AUTHORED]->(p2:Paper) WHERE p1.id < p2.id
+//        RETURN p1.id AS a, p2.id AS b }
+// RETURN a, b, count(*) AS weight;
+
+// Modularity of the stored p.community partition
+// CALL { MATCH (p1:Paper)-[:CITES]-(p2:Paper) WHERE p1.id < p2.id RETURN p1, p2
+//        UNION ALL
+//        MATCH (p1:Paper)<-[:AUTHORED]-(:Author)-[:AUTHORED]->(p2:Paper) WHERE p1.id < p2.id RETURN p1, p2 }
+// WITH collect({a: p1.community, b: p2.community}) AS edges
+// WITH edges, toFloat(size(edges)) AS m WHERE m > 0
+// UNWIND edges AS e UNWIND [e.a, e.b] AS c
+// WITH m, c, sum(CASE WHEN e.a = e.b THEN 0.5 ELSE 0.0 END) AS internal, count(*) AS degree
+// RETURN round(sum(internal / m - (degree / (2 * m)) ^ 2), 4) AS modularity;
+
+// Subgraph export with APOC (falls back to (seed)-[:CITES*1..3]-() without it)
+// MATCH (seed:Paper {id: $paper_id})
+// CALL apoc.path.subgraphAll(seed, {relationshipFilter: 'CITES', maxLevel: 2, limit: 200})
+// YIELD nodes, relationships
+// RETURN size(nodes) AS nodes, size(relationships) AS relationships;
