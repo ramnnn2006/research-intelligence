@@ -1,10 +1,70 @@
+import time
 import logging
+import threading
 import networkx as nx
+from collections import OrderedDict
+from functools import wraps
 from typing import Dict, List, Any, Optional
 from app.db.neo4j_client import get_neo4j_client
 
 logger = logging.getLogger("research_iq.queries")
 
+
+def ttl_cache(maxsize: int = 64, ttl: float = 120.0):
+    """
+    LRU cache with expiry for the multi-hop traversals. They are the slowest
+    queries in the catalog and the graph only changes when a search or an
+    ingest run writes to it, so serving a result up to `ttl` seconds old is fine.
+    Results are only cached while Neo4j is connected, so an outage doesn't
+    leave empty answers stuck in the cache. Use fn.cache_clear() after bulk writes.
+    """
+    def decorator(fn):
+        entries: "OrderedDict[Any, Any]" = OrderedDict()
+        lock = threading.Lock()
+
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            key = (args, tuple(sorted(kwargs.items())))
+            now = time.monotonic()
+            with lock:
+                hit = entries.get(key)
+                if hit and now - hit[0] < ttl:
+                    entries.move_to_end(key)
+                    return hit[1]
+            value = fn(*args, **kwargs)
+            if get_neo4j_client().is_connected():
+                with lock:
+                    entries[key] = (now, value)
+                    entries.move_to_end(key)
+                    while len(entries) > maxsize:
+                        entries.popitem(last=False)
+            return value
+
+        wrapper.cache_clear = entries.clear
+        wrapper.cache_info = lambda: {"size": len(entries), "maxsize": maxsize, "ttl": ttl}
+        return wrapper
+    return decorator
+
+
+_apoc_state: Dict[str, Optional[bool]] = {"available": None}
+
+
+def apoc_available() -> bool:
+    """True when the APOC path expander procedures are installed (checked once per process)."""
+    if _apoc_state["available"] is None:
+        client = get_neo4j_client()
+        if not client.is_connected() and not client.connect():
+            return False
+        try:
+            rows = client.execute_read(
+                "SHOW PROCEDURES YIELD name WHERE name = 'apoc.path.subgraphAll' RETURN count(*) AS n")
+            _apoc_state["available"] = bool(rows and rows[0]["n"])
+        except Exception:
+            _apoc_state["available"] = False
+        logger.info("APOC path expansion %s", "enabled" if _apoc_state["available"] else "not installed, using plain Cypher")
+    return bool(_apoc_state["available"])
+
+@ttl_cache()
 def get_2hop_citations(seed_paper_id: str, limit: int = 10) -> List[Dict[str, Any]]:
     """
     Query 1: Multi-Hop Citation Path Discovery (2-Hop Traversal)
@@ -60,16 +120,18 @@ def get_paper_code_matching(topic_name: Optional[str] = None, limit: int = 10) -
     return client.execute_read(cypher, {"topic": topic_name, "limit": limit})
 
 
+@ttl_cache()
 def get_indegree_centrality(limit: int = 8) -> List[Dict[str, Any]]:
     """
     Query 4: Top Landmark Papers by In-Degree Centrality
     Identifies high-impact hub papers cited by other literature in the graph.
+    COUNT {} with an explicit incoming direction is answered from the node's
+    relationship degree, no OPTIONAL MATCH row expansion per citing paper.
     """
     client = get_neo4j_client()
     cypher = """
     MATCH (p:Paper)
-    OPTIONAL MATCH (citing:Paper)-[:CITES]->(p)
-    WITH p, count(citing) AS in_degree_citations
+    WITH p, COUNT { (p)<-[:CITES]-(:Paper) } AS in_degree_citations
     RETURN p.id AS id, p.title AS title, p.year AS year, in_degree_citations, p.citations AS declared_citations
     ORDER BY in_degree_citations DESC, declared_citations DESC
     LIMIT $limit
@@ -237,7 +299,7 @@ def compute_citation_pagerank(iterations: int = 20, damping: float = 0.85,
         MATCH (p:Paper)
         CALL {
             WITH p
-            MATCH (src:Paper)-[:CITES]->(p)
+            MATCH (p)<-[:CITES]-(src:Paper)
             RETURN sum(src.pagerank / COUNT { (src)-[:CITES]->(:Paper) }) AS incoming
         }
         SET p.pagerank_next = (1 - $damping) / n + $damping * incoming
@@ -364,6 +426,7 @@ def _graph_node(n: Dict[str, Any]) -> Dict[str, Any]:
     return node
 
 
+@ttl_cache(maxsize=32)
 def get_export_subgraph(scope: str = "citations", topic: str = "", paper_id: str = "",
                         depth: int = 2, limit: int = 200) -> Dict[str, Any]:
     """
@@ -397,16 +460,32 @@ def get_export_subgraph(scope: str = "citations", topic: str = "", paper_id: str
     if not nodes:
         return {"scope": scope, "depth": depth, "seeds": 0, "nodes": [], "links": []}
 
-    # variable-length bounds can't be passed as parameters, depth is clamped to 1..3 above
-    rows = client.execute_read("""
-    MATCH (seed:Paper) WHERE seed.id IN $ids
-    MATCH path = (seed)-[:%s*1..%d]-()
-    UNWIND relationships(path) AS r
-    WITH DISTINCT r
-    LIMIT $limit
-    RETURN type(r) AS relation, [n IN [startNode(r), endNode(r)] | n %s] AS ends
-    """ % (rel, depth, NODE_PROJECTION),
-        {"ids": [k.split(":", 1)[1] for k in nodes], "limit": limit})
+    params = {"ids": [k.split(":", 1)[1] for k in nodes], "limit": limit, "rels": rel, "depth": depth}
+    rows = None
+    if apoc_available():
+        # subgraphAll visits every node once (BFS with uniqueness), plain
+        # variable-length matching enumerates every path, which blows up at 3 hops
+        try:
+            rows = client.execute_read("""
+            MATCH (seed:Paper) WHERE seed.id IN $ids
+            CALL apoc.path.subgraphAll(seed, {relationshipFilter: $rels, maxLevel: $depth, limit: $limit})
+            YIELD relationships
+            UNWIND relationships AS r
+            WITH DISTINCT r
+            RETURN type(r) AS relation, [n IN [startNode(r), endNode(r)] | n %s] AS ends
+            """ % NODE_PROJECTION, params)
+        except Exception as e:
+            logger.warning("APOC subgraph expansion failed, falling back to Cypher: %s", e)
+    if rows is None:
+        # variable-length bounds can't be passed as parameters, depth is clamped to 1..3 above
+        rows = client.execute_read("""
+        MATCH (seed:Paper) WHERE seed.id IN $ids
+        MATCH path = (seed)-[:%s*1..%d]-()
+        UNWIND relationships(path) AS r
+        WITH DISTINCT r
+        LIMIT $limit
+        RETURN type(r) AS relation, [n IN [startNode(r), endNode(r)] | n %s] AS ends
+        """ % (rel, depth, NODE_PROJECTION), params)
 
     links = []
     for row in rows:
