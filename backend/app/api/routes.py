@@ -1,6 +1,6 @@
 import asyncio
 import csv, io, json
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, UploadFile, File
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
@@ -13,6 +13,8 @@ from app.services.graph import build_knowledge_graph, fetch_neo4j_subgraph
 from app.rag.vectorstore import add_papers, query as rag_query, count as rag_count
 from app.agents import research_agent as agent
 from app.agents.research_agent import LLMError
+from app.agents.pdf_agent import answer_pdf_question
+from app.rag.pdf_engine import pdf_store, download_arxiv_pdf, arxiv_pdf_filename, max_pdf_bytes, PDFTooLarge
 from app.db.knowledge_graph import save_hf_artifacts, get_topic_graph, get_multi_hop_citations
 from app.services.academic import get_paper_citations, search_author_portfolio
 from app.db.database import (
@@ -52,6 +54,12 @@ class CitationReq(BaseModel):
 class AuthorSearchReq(BaseModel):
     name: str
     max_results: int = Field(default=15, ge=1, le=50)
+
+class ArxivPdfReq(BaseModel):
+    arxiv_id: str = Field(min_length=1, max_length=200)
+
+class PdfChatReq(BaseModel):
+    question: str = Field(min_length=1, max_length=2000)
 
 class MultiHopReq(BaseModel):
     title: str
@@ -296,6 +304,61 @@ async def hf_models(query: str = Query(..., min_length=1), limit: int = Query(de
 @router.get("/hf/datasets")
 async def hf_datasets(query: str = Query(..., min_length=1), limit: int = Query(default=8, ge=1, le=50)):
     return await hf.search_datasets(query, limit)
+
+
+# ── Full-text PDF RAG ─────────────────────────────────────────────────────
+def _pdf_error(e: ValueError) -> HTTPException:
+    return HTTPException(413 if isinstance(e, PDFTooLarge) else 400, str(e))
+
+async def _load_pdf(data: bytes, filename: str) -> dict:
+    try:
+        info = await run_in_threadpool(pdf_store.add_pdf_bytes, data, filename)
+    except ValueError as e:
+        raise _pdf_error(e)
+    return {"success": True, "info": info, "stats": pdf_store.get_stats()}
+
+@router.post("/pdf/upload")
+async def upload_pdf(file: UploadFile = File(...)):
+    if not (file.filename or "").lower().endswith(".pdf"):
+        raise HTTPException(400, "Only PDF files are supported")
+    data = await file.read(max_pdf_bytes() + 1)  # one byte over the cap is enough to reject it
+    if len(data) > max_pdf_bytes():
+        raise HTTPException(413, f"The PDF is larger than the {max_pdf_bytes() // 1048576} MB limit.")
+    return await _load_pdf(data, file.filename)
+
+@router.post("/pdf/fetch_arxiv")
+async def fetch_arxiv_pdf(req: ArxivPdfReq):
+    try:
+        data = await download_arxiv_pdf(req.arxiv_id)
+    except ValueError as e:
+        raise _pdf_error(e)
+    if not data:
+        raise HTTPException(404, f"Could not fetch the PDF for arXiv id {req.arxiv_id}")
+    return await _load_pdf(data, arxiv_pdf_filename(req.arxiv_id))
+
+@router.post("/pdf/chat")
+async def chat_pdf(req: PdfChatReq):
+    chunks = await run_in_threadpool(pdf_store.search, req.question, 6)
+    if not chunks:
+        return {"answer": "No relevant sections found in the loaded PDF(s). Load a PDF first or try another question.",
+                "chunks": []}
+    try:
+        answer = await answer_pdf_question(req.question, chunks)
+    except LLMError as e:
+        raise HTTPException(502, str(e))
+    except Exception as e:
+        raise HTTPException(502, f"The language model request failed ({type(e).__name__}).")
+    return {"answer": answer,
+            "chunks": [{"page": c["page"], "paper": c["paper"], "text": c["text"][:300]} for c in chunks]}
+
+@router.get("/pdf/status")
+def pdf_status():
+    return pdf_store.get_stats()
+
+@router.delete("/pdf/clear")
+def clear_pdfs():
+    pdf_store.clear()
+    return {"success": True, "stats": pdf_store.get_stats()}
 
 
 # ── Neo4j Explicit CRUD Endpoints ──────────────────────────────────────────

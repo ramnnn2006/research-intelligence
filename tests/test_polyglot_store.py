@@ -215,5 +215,77 @@ class TestCitationNetwork(unittest.TestCase):
             self.assertEqual(api.post("/api/neo4j/citations/multihop", json={"title": "x", "hops": 9}).status_code, 422)
 
 
+def _tiny_pdf(text: str) -> bytes:
+    """A one-page PDF with extractable text, built by hand so no PDF library is needed."""
+    stream = f"BT /F1 12 Tf 72 720 Td ({text}) Tj ET".encode()
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R "
+        b"/Resources << /Font << /F1 5 0 R >> >> >>",
+        b"<< /Length %d >>\nstream\n" % len(stream) + stream + b"\nendstream",
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    ]
+    out, offsets = b"%PDF-1.4\n", []
+    for i, body in enumerate(objects, 1):
+        offsets.append(len(out))
+        out += b"%d 0 obj\n" % i + body + b"\nendobj\n"
+    xref = len(out)
+    out += b"xref\n0 %d\n0000000000 65535 f \n" % (len(objects) + 1)
+    out += b"".join(b"%010d 00000 n \n" % o for o in offsets)
+    out += b"trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n" % (len(objects) + 1, xref)
+    return out
+
+
+class TestPdfRag(unittest.TestCase):
+    PDF = _tiny_pdf("ResearchIQ fixture: graph attention networks use masked self attention over neighbours.")
+
+    def setUp(self):
+        from app.rag.pdf_engine import pdf_store
+        pdf_store.clear()
+
+    def tearDown(self):
+        from app.rag.pdf_engine import pdf_store
+        pdf_store.clear()
+
+    def _upload(self, api, data, name="fixture.pdf"):
+        return api.post("/api/pdf/upload", files={"file": (name, data, "application/pdf")})
+
+    def test_01_upload_dedupe_and_status(self):
+        with TestClient(app) as api:
+            first = self._upload(api, self.PDF)
+            self.assertEqual(first.status_code, 200, first.text)
+            self.assertEqual(first.json()["info"]["pages"], 1)
+            self.assertGreaterEqual(first.json()["info"]["chunks"], 1)
+            again = self._upload(api, self.PDF, "renamed.pdf")
+            self.assertTrue(again.json()["info"]["already_loaded"])
+            status = api.get("/api/pdf/status").json()
+            self.assertEqual(status["loaded"], 1)
+            self.assertEqual([p["name"] for p in status["papers"]], ["fixture.pdf"])
+            self.assertEqual(api.delete("/api/pdf/clear").json()["stats"]["loaded"], 0)
+
+    def test_02_rejects_bad_input(self):
+        with TestClient(app) as api:
+            self.assertEqual(self._upload(api, self.PDF, "notes.txt").status_code, 400)
+            self.assertEqual(self._upload(api, b"not a pdf at all").status_code, 400)
+            with mock.patch.dict(os.environ, {"PDF_MAX_MB": "1"}):
+                self.assertEqual(self._upload(api, b"%PDF-" + b"0" * (1024 * 1024)).status_code, 413)
+            self.assertEqual(api.post("/api/pdf/fetch_arxiv", json={"arxiv_id": "../../etc/passwd"}).status_code, 400)
+
+    def test_03_chat_answers_with_page_excerpts_and_maps_llm_errors(self):
+        from app.api import routes
+        from app.agents.research_agent import LLMError
+        with TestClient(app) as api:
+            self._upload(api, self.PDF)
+            with mock.patch.object(routes, "answer_pdf_question", mock.AsyncMock(return_value="Masked attention [Page 1]")):
+                res = api.post("/api/pdf/chat", json={"question": "how does graph attention work"})
+                self.assertEqual(res.status_code, 200)
+                self.assertEqual(res.json()["chunks"][0]["page"], 1)
+            with mock.patch.object(routes, "answer_pdf_question", mock.AsyncMock(side_effect=LLMError("GROQ_API_KEY is not set"))):
+                res = api.post("/api/pdf/chat", json={"question": "graph attention"})
+                self.assertEqual(res.status_code, 502)
+                self.assertIn("GROQ_API_KEY", res.json()["detail"])
+
+
 if __name__ == "__main__":
     unittest.main()
