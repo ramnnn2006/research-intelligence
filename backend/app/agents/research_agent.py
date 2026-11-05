@@ -1,4 +1,4 @@
-import os, json, re, asyncio
+import os, json, re, asyncio, logging
 from typing import Any, Callable, Dict, Iterator, Optional
 from langchain_groq import ChatGroq
 from langchain_core.prompts import PromptTemplate
@@ -20,6 +20,11 @@ def _env_token(name: str) -> str:
 
 
 DEFAULT_GROQ_MODEL = "openai/gpt-oss-120b"
+# Reasoning models such as gpt-oss spend part of the output budget on hidden
+# reasoning before the answer; 2048 tokens could cut long JSON answers short.
+MAX_OUTPUT_TOKENS = 4096
+
+logger = logging.getLogger("research_iq.agent")
 
 
 def _llm(temp=0.3):
@@ -30,7 +35,7 @@ def _llm(temp=0.3):
         model=os.getenv("GROQ_MODEL", "").strip() or DEFAULT_GROQ_MODEL,
         groq_api_key=key,
         temperature=temp,
-        max_tokens=2048,
+        max_tokens=MAX_OUTPUT_TOKENS,
     )
 
 
@@ -40,10 +45,17 @@ async def _invoke(prompt: PromptTemplate, variables: Dict[str, Any], what: str, 
         chain = prompt | _llm(temp)
         r = await chain.ainvoke(variables)
         text = r.content if isinstance(r.content, str) else str(r.content or "")
+        finish = (getattr(r, "response_metadata", None) or {}).get("finish_reason")
     except LLMError as e:
         raise LLMError(f"{what} failed: {e}") from e
     except Exception as e:
+        if getattr(e, "status_code", None) == 429 or type(e).__name__ == "RateLimitError":
+            logger.warning("%s: Groq rate limit reached after retries", what)
+            raise LLMError(f"{what} failed: the Groq rate limit was reached, wait about a minute and try again") from e
         raise LLMError(f"{what} failed: {type(e).__name__}: {str(e)[:200]}") from e
+    if finish == "length":
+        logger.warning("%s: output hit the %d token limit (%d chars received)", what, MAX_OUTPUT_TOKENS, len(text))
+        raise LLMError(f"{what} failed: the response was cut off at the output token limit, please try again")
     if not text.strip():
         raise LLMError(f"{what} failed: the model returned an empty response")
     return text
@@ -76,12 +88,35 @@ def _json_candidates(text: str) -> Iterator[Any]:
             start = text.find(opener, start + 1)
 
 
+# A backslash that does not start a valid JSON escape, e.g. "D\\&D" or LaTeX "\\alpha".
+# Valid escapes are matched as a unit so an escaped backslash is never split.
+_JSON_ESCAPE = re.compile(r'\\(["\\/bfnrt]|u[0-9a-fA-F]{4})|\\')
+
+
+def _repair_escapes(text: str) -> str:
+    """Double every backslash that does not start a valid JSON escape."""
+    return _JSON_ESCAPE.sub(lambda m: m.group(0) if m.group(1) else "\\\\", text)
+
+
 def _safe_json(text: str, accept: Optional[Callable[[Any], bool]] = None):
-    """Extract JSON from LLM output; returns the first value `accept` allows, or None."""
-    for value in _json_candidates(text or ""):
-        if accept is None or accept(value):
-            return value
+    """
+    Extract JSON from LLM output; returns the first value `accept` allows, or None.
+    Models often write invalid escapes such as \\& or LaTeX, so a second pass
+    retries with those backslashes repaired.
+    """
+    text = text or ""
+    repaired = _repair_escapes(text)
+    for candidate_text in ((text, repaired) if repaired != text else (text,)):
+        for value in _json_candidates(candidate_text):
+            if accept is None or accept(value):
+                return value
     return None
+
+
+def _no_json(message: str, text: str) -> "LLMError":
+    """Log the start and end of output that held no usable JSON, then build the error."""
+    logger.warning("%s | %d chars | head=%r | tail=%r", message, len(text or ""), (text or "")[:200], (text or "")[-200:])
+    return LLMError(message)
 
 
 def _has_list(key: str) -> Callable[[Any], bool]:
@@ -145,7 +180,7 @@ async def detect_research_gaps(topic: str, papers: list) -> list:
     text = await _invoke(prompt, {"topic": topic, "papers": papers_text}, "Research gap detection")
     gaps = _gap_list(_safe_json(text, accept=lambda v: _gap_list(v) is not None))
     if not gaps:
-        raise LLMError("Research gap detection failed: the model did not return a JSON list of gaps")
+        raise _no_json("Research gap detection failed: the model did not return a JSON list of gaps", text)
     return gaps
 
 async def compare_papers(paper_a: dict, paper_b: dict) -> dict:
@@ -170,7 +205,7 @@ async def compare_papers(paper_a: dict, paper_b: dict) -> dict:
     }, "Paper comparison")
     result = _safe_json(text, accept=_has_list("table"))
     if result is None:
-        raise LLMError("Paper comparison failed: the model did not return the comparison JSON")
+        raise _no_json("Paper comparison failed: the model did not return the comparison JSON", text)
     return result
 
 async def generate_survey(topic: str, papers: list) -> dict:
@@ -192,7 +227,7 @@ async def generate_survey(topic: str, papers: list) -> dict:
     text = await _invoke(prompt, {"topic": topic, "papers": papers_text}, "Survey generation")
     result = _safe_json(text, accept=_has_list("sections"))
     if result is None:
-        raise LLMError("Survey generation failed: the model did not return the survey JSON")
+        raise _no_json("Survey generation failed: the model did not return the survey JSON", text)
     return result
 
 async def answer_question(question: str, papers: list) -> str:
@@ -235,5 +270,5 @@ async def generate_roadmap(topic: str, papers: list) -> dict:
     text = await _invoke(prompt, {"topic": topic, "papers": papers_text}, "Roadmap generation")
     result = _safe_json(text, accept=_has_list("phases"))
     if result is None:
-        raise LLMError("Roadmap generation failed: the model did not return the roadmap JSON")
+        raise _no_json("Roadmap generation failed: the model did not return the roadmap JSON", text)
     return result

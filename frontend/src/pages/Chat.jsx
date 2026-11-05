@@ -47,10 +47,68 @@ const SAMPLE_PAPERS = [
   { name: 'Retrieval-Augmented Generation Survey', id: '2312.10997' },
 ]
 
+// GitHub style tables: a header row, a |---| separator row, then body rows.
+// Runs on text that is already HTML-escaped, so cell content stays inert;
+// the only tag let through is <br>, which models often put inside cells.
+const TABLE_ROW = /^\s*\|.*\|\s*$/
+const TABLE_SEP = /^\s*\|?(\s*:?-{3,}:?\s*\|)+\s*(:?-{3,}:?\s*)?$/
+const CELL_STYLE = 'border:1px solid var(--border);padding:6px 8px;text-align:left;vertical-align:top'
+
+// Split a table row on "|", except inside \( \) math (e.g. |E|), inline code, or an escaped \|
+function splitCells(row) {
+  const cells = []
+  let cur = '', math = false, code = false
+  for (let i = 0; i < row.length; i++) {
+    const ch = row[i], next = row[i + 1]
+    if (ch === '\\' && next === '|') { cur += '|'; i++; continue }
+    if (ch === '\\' && (next === '(' || next === ')')) { math = next === '('; cur += ch + next; i++; continue }
+    if (ch === '`') code = !code
+    if (ch === '|' && !math && !code) { cells.push(cur); cur = ''; continue }
+    cur += ch
+  }
+  cells.push(cur)
+  return cells
+}
+
+// Fallback for bare set sizes such as O(|V| + |E|): a real column pipe has spaces on both sides
+function splitSpacedCells(row) {
+  return row.split(/(?<=\s)\|(?=\s)/)
+}
+
+function tableCells(line, expected) {
+  const row = line.trim().replace(/^\|/, '').replace(/\|$/, '')
+  let cells = splitCells(row)
+  if (expected && cells.length !== expected) {
+    const spaced = splitSpacedCells(row)
+    if (spaced.length === expected) cells = spaced
+  }
+  return cells.map(c => c.trim().replace(/&lt;br\s*\/?&gt;/gi, '<br/>'))
+}
+
+function renderTables(text) {
+  const lines = text.split('\n')
+  const out = []
+  for (let i = 0; i < lines.length; i++) {
+    if (!(TABLE_ROW.test(lines[i]) && i + 1 < lines.length && TABLE_SEP.test(lines[i + 1]))) {
+      out.push(lines[i])
+      continue
+    }
+    const head = tableCells(lines[i])
+    const rows = []
+    let j = i + 2
+    while (j < lines.length && TABLE_ROW.test(lines[j])) rows.push(tableCells(lines[j++], head.length))
+    i = j - 1
+    const th = head.map(c => `<th style="${CELL_STYLE};background:rgba(255,255,255,.04)">${c}</th>`).join('')
+    const body = rows.map(r => `<tr>${r.map(c => `<td style="${CELL_STYLE}">${c}</td>`).join('')}</tr>`).join('')
+    out.push(`<div style="overflow-x:auto;margin:8px 0"><table style="border-collapse:collapse;width:100%;font-size:12px"><thead><tr>${th}</tr></thead><tbody>${body}</tbody></table></div>`)
+  }
+  return out.join('\n')
+}
+
 function formatMarkdown(text) {
   if (!text) return ''
-  let html = text
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  let html = renderTables(text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'))
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
     .replace(/`([^`\n]+)`/g, '<code style="background:rgba(255,255,255,.08);padding:1px 5px;border-radius:4px;font-family:monospace;font-size:12px">$1</code>')
