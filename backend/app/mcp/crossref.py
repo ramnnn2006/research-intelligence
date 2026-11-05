@@ -1,5 +1,11 @@
 import aiohttp, os, re
 
+
+def _env_token(name: str) -> str:
+    """Env value, treating blanks and .env.example placeholders (your_..., optional) as unset."""
+    value = os.getenv(name, "").strip()
+    return "" if not value or value.lower().startswith(("your_", "optional")) else value
+
 class CrossRefMCP:
     BASE = "https://api.crossref.org/works"
     HEADERS = {"User-Agent": "ResearchIQ/1.0"}
@@ -23,7 +29,8 @@ class CrossRefMCP:
         params = {"query.bibliographic": query, "rows": max_results,
                   "select": "DOI,title,author,issued,abstract,is-referenced-by-count,URL"}
         # CrossRef routes requests that carry a contact email to its faster "polite" pool
-        if os.getenv("CROSSREF_MAILTO"): params["mailto"] = os.getenv("CROSSREF_MAILTO")
+        mailto = _env_token("CROSSREF_MAILTO")
+        if mailto: params["mailto"] = mailto
         try:
             async with aiohttp.ClientSession(headers=self.HEADERS) as s:
                 async with s.get(self.BASE, params=params, timeout=aiohttp.ClientTimeout(total=20)) as r:

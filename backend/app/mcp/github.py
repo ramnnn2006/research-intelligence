@@ -1,11 +1,17 @@
 import aiohttp, os
 
+
+def _env_token(name: str) -> str:
+    """Env value, treating blanks and .env.example placeholders (your_..., optional) as unset."""
+    value = os.getenv(name, "").strip()
+    return "" if not value or value.lower().startswith(("your_", "optional")) else value
+
 class GitHubMCP:
     BASE = "https://api.github.com/search/repositories"
 
     async def search(self, query: str, max_results: int = 6) -> list:
         headers = {"Accept": "application/vnd.github.v3+json"}
-        token = os.getenv("GITHUB_TOKEN","")
+        token = _env_token("GITHUB_TOKEN")
         if token: headers["Authorization"] = f"token {token}"
         params = {"q": f"{query} stars:>5", "sort": "stars", "order": "desc", "per_page": max_results}
         try:

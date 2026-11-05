@@ -1,4 +1,5 @@
 import os, json, re, asyncio
+from typing import Any, Callable, Dict, Iterator, Optional
 from langchain_groq import ChatGroq
 from langchain_core.prompts import PromptTemplate
 from app.mcp.crossref import CrossRefMCP
@@ -7,44 +8,94 @@ from app.mcp.pubmed import PubMedMCP
 crossref = CrossRefMCP()
 pubmed   = PubMedMCP()
 
+
+class LLMError(RuntimeError):
+    """The LLM call failed or returned output that could not be used. Routes map it to HTTP 502."""
+
+
+def _env_token(name: str) -> str:
+    """Env value, treating blanks and .env.example placeholders (your_..., optional) as unset."""
+    value = os.getenv(name, "").strip()
+    return "" if not value or value.lower().startswith(("your_", "optional")) else value
+
+
+DEFAULT_GROQ_MODEL = "openai/gpt-oss-120b"
+
+
 def _llm(temp=0.3):
+    key = _env_token("GROQ_API_KEY")
+    if not key:
+        raise LLMError("GROQ_API_KEY is not set")
     return ChatGroq(
-        model="llama-3.3-70b-versatile",
-        groq_api_key=os.getenv("GROQ_API_KEY"),
+        model=os.getenv("GROQ_MODEL", "").strip() or DEFAULT_GROQ_MODEL,
+        groq_api_key=key,
         temperature=temp,
         max_tokens=2048,
     )
 
-def _safe_json(text: str):
-    """Robustly extract JSON from LLM output."""
-    text = text.strip()
-    # Direct parse
+
+async def _invoke(prompt: PromptTemplate, variables: Dict[str, Any], what: str, temp: float = 0.3) -> str:
+    """Run prompt | llm and return the text, raising LLMError with a short message on any failure."""
     try:
-        return json.loads(text)
-    except Exception:
+        chain = prompt | _llm(temp)
+        r = await chain.ainvoke(variables)
+        text = r.content if isinstance(r.content, str) else str(r.content or "")
+    except LLMError as e:
+        raise LLMError(f"{what} failed: {e}") from e
+    except Exception as e:
+        raise LLMError(f"{what} failed: {type(e).__name__}: {str(e)[:200]}") from e
+    if not text.strip():
+        raise LLMError(f"{what} failed: the model returned an empty response")
+    return text
+
+
+def _json_candidates(text: str) -> Iterator[Any]:
+    """
+    Every JSON value we can find in LLM output, most likely first: the whole
+    text, fenced code blocks, then the outermost object and only after that
+    arrays. Arrays come last because prose such as "see [1]" is valid JSON.
+    """
+    stripped = text.strip()
+    try:
+        yield json.loads(stripped)
+    except ValueError:
         pass
-    # Strip markdown code fences
-    m = re.search(r"```(?:json)?\s*([\[\{].*?[\]\}])\s*```", text, re.DOTALL)
-    if m:
+    for block in re.findall(r"```(?:json)?\s*(.*?)```", text, re.DOTALL):
         try:
-            return json.loads(m.group(1))
-        except Exception:
+            yield json.loads(block.strip())
+        except ValueError:
             pass
-    # Find first JSON array
-    m = re.search(r"(\[.*?\])", text, re.DOTALL)
-    if m:
-        try:
-            return json.loads(m.group(1))
-        except Exception:
-            pass
-    # Find first JSON object
-    m = re.search(r"(\{.*\})", text, re.DOTALL)
-    if m:
-        try:
-            return json.loads(m.group(1))
-        except Exception:
-            pass
+    decoder = json.JSONDecoder()
+    for opener in "{[":
+        start = text.find(opener)
+        while start != -1:
+            try:
+                yield decoder.raw_decode(text, start)[0]
+            except ValueError:
+                pass
+            start = text.find(opener, start + 1)
+
+
+def _safe_json(text: str, accept: Optional[Callable[[Any], bool]] = None):
+    """Extract JSON from LLM output; returns the first value `accept` allows, or None."""
+    for value in _json_candidates(text or ""):
+        if accept is None or accept(value):
+            return value
     return None
+
+
+def _has_list(key: str) -> Callable[[Any], bool]:
+    return lambda v: isinstance(v, dict) and isinstance(v.get(key), list)
+
+
+def _gap_list(value: Any):
+    if isinstance(value, dict):
+        value = value.get("gaps") or value.get("research_gaps")
+    if not isinstance(value, list):
+        return None
+    gaps = [g.strip() for g in value if isinstance(g, str) and g.strip()]
+    return gaps or None
+
 
 def _papers_str(papers: list) -> str:
     lines = []
@@ -55,9 +106,11 @@ def _papers_str(papers: list) -> str:
         lines.append(f"[{i+1}] {title} ({year}): {summary}")
     return "\n".join(lines)
 
-async def _top_up(topic: str, papers: list, min_papers: int = 6) -> list:
+async def top_up_papers(topic: str, papers: list, min_papers: int = 6) -> list:
     """ArXiv/Scholar sometimes return very little (rate limits, niche or biomedical
-    topics). Fill the gap from CrossRef and PubMed so the LLM has something to cite."""
+    topics). Fill the gap from CrossRef and PubMed so the LLM has something to cite.
+    Routes call this before the generators so the list they return and save is
+    exactly the list the model was shown (and cites as [1], [2], ...)."""
     if len(papers) >= min_papers:
         return papers
     extra = await asyncio.gather(crossref.search(topic, 5), pubmed.search(topic, 5))
@@ -70,7 +123,6 @@ async def _top_up(topic: str, papers: list, min_papers: int = 6) -> list:
     return out
 
 async def generate_literature_review(topic: str, papers: list) -> str:
-    papers = await _top_up(topic, papers)
     papers_text = _papers_str(papers)
     prompt = PromptTemplate.from_template(
         "You are an expert academic writer. Write a formal literature review (4-5 paragraphs) "
@@ -79,15 +131,10 @@ async def generate_literature_review(topic: str, papers: list) -> str:
         "Write a coherent review covering background, methods, findings, limitations, and future trends. "
         "Reference papers by number like [1], [2]. Output plain text only, no JSON."
     )
-    chain = prompt | _llm()
-    try:
-        r = await chain.ainvoke({"topic": topic, "papers": papers_text})
-        return r.content.strip()
-    except Exception as e:
-        return f"Error generating review: {e}"
+    text = await _invoke(prompt, {"topic": topic, "papers": papers_text}, "Literature review generation")
+    return text.strip()
 
 async def detect_research_gaps(topic: str, papers: list) -> list:
-    papers = await _top_up(topic, papers)
     papers_text = _papers_str(papers)
     prompt = PromptTemplate.from_template(
         "You are a research strategist. Identify 5 specific research gaps for: {topic}\n\n"
@@ -95,21 +142,11 @@ async def detect_research_gaps(topic: str, papers: list) -> list:
         "Return ONLY a JSON array of exactly 5 strings. No other text.\n"
         'Example: ["Gap 1", "Gap 2", "Gap 3", "Gap 4", "Gap 5"]'
     )
-    chain = prompt | _llm()
-    try:
-        r = await chain.ainvoke({"topic": topic, "papers": papers_text})
-        result = _safe_json(r.content)
-        if isinstance(result, list) and len(result) > 0:
-            return [str(g) for g in result]
-    except Exception:
-        pass
-    return [
-        "Limited evaluation across diverse real-world datasets",
-        "Lack of interpretability and explainability in current models",
-        "Scalability challenges with large-scale data",
-        "Insufficient cross-domain generalization studies",
-        "Missing standardized benchmarks for fair comparison",
-    ]
+    text = await _invoke(prompt, {"topic": topic, "papers": papers_text}, "Research gap detection")
+    gaps = _gap_list(_safe_json(text, accept=lambda v: _gap_list(v) is not None))
+    if not gaps:
+        raise LLMError("Research gap detection failed: the model did not return a JSON list of gaps")
+    return gaps
 
 async def compare_papers(paper_a: dict, paper_b: dict) -> dict:
     prompt = PromptTemplate.from_template(
@@ -125,28 +162,18 @@ async def compare_papers(paper_a: dict, paper_b: dict) -> dict:
         '{{"aspect":"Novelty","paper_a":"...","paper_b":"..."}}],'
         '"winner":"Paper A or Paper B or Tie","reason":"..."}}'
     )
-    chain = prompt | _llm()
-    try:
-        r = await chain.ainvoke({
-            "title_a": paper_a.get("title", "Paper A"),
-            "abstract_a": (paper_a.get("summary", "") or "")[:500],
-            "title_b": paper_b.get("title", "Paper B"),
-            "abstract_b": (paper_b.get("summary", "") or "")[:500],
-        })
-        result = _safe_json(r.content)
-        if result and "table" in result:
-            return result
-    except Exception:
-        pass
-    return {
-        "summary": "Comparison could not be generated. Please try again.",
-        "table": [],
-        "winner": "N/A",
-        "reason": "",
-    }
+    text = await _invoke(prompt, {
+        "title_a": paper_a.get("title", "Paper A"),
+        "abstract_a": (paper_a.get("summary") or paper_a.get("abstract") or "")[:500],
+        "title_b": paper_b.get("title", "Paper B"),
+        "abstract_b": (paper_b.get("summary") or paper_b.get("abstract") or "")[:500],
+    }, "Paper comparison")
+    result = _safe_json(text, accept=_has_list("table"))
+    if result is None:
+        raise LLMError("Paper comparison failed: the model did not return the comparison JSON")
+    return result
 
 async def generate_survey(topic: str, papers: list) -> dict:
-    papers = await _top_up(topic, papers)
     papers_text = _papers_str(papers)
     prompt = PromptTemplate.from_template(
         "Generate a structured literature survey for: {topic}\n\n"
@@ -162,20 +189,11 @@ async def generate_survey(topic: str, papers: list) -> dict:
         '"conclusion":"2-3 sentence conclusion",'
         '"gaps":["gap1","gap2","gap3"]}}'
     )
-    chain = prompt | _llm()
-    try:
-        r = await chain.ainvoke({"topic": topic, "papers": papers_text})
-        result = _safe_json(r.content)
-        if result and "sections" in result:
-            return result
-    except Exception:
-        pass
-    return {
-        "introduction": f"This survey covers recent advances in {topic}.",
-        "sections": [{"heading": "Overview", "content": "Survey generation failed — please retry."}],
-        "conclusion": "Please retry the survey generation.",
-        "gaps": [],
-    }
+    text = await _invoke(prompt, {"topic": topic, "papers": papers_text}, "Survey generation")
+    result = _safe_json(text, accept=_has_list("sections"))
+    if result is None:
+        raise LLMError("Survey generation failed: the model did not return the survey JSON")
+    return result
 
 async def answer_question(question: str, papers: list) -> str:
     context = _papers_str(papers) if papers else "No papers loaded yet."
@@ -186,12 +204,8 @@ async def answer_question(question: str, papers: list) -> str:
         "Give a clear, well-structured answer. Cite papers as [1], [2] etc. "
         "If no papers are relevant, answer from your general knowledge."
     )
-    chain = prompt | _llm(temp=0.4)
-    try:
-        r = await chain.ainvoke({"context": context, "question": question})
-        return r.content.strip()
-    except Exception as e:
-        return f"Could not answer: {e}"
+    text = await _invoke(prompt, {"context": context, "question": question}, "Question answering", temp=0.4)
+    return text.strip()
 
 async def generate_roadmap(topic: str, papers: list) -> dict:
     # Embed actual URLs in the paper list so they come back in the JSON
@@ -218,16 +232,8 @@ async def generate_roadmap(topic: str, papers: list) -> dict:
         '"key_skills":["skill1","skill2","skill3","skill4"],'
         '"resources":["resource1","resource2"]}}'
     )
-    chain = prompt | _llm()
-    try:
-        r = await chain.ainvoke({"topic": topic, "papers": papers_text})
-        result = _safe_json(r.content)
-        if result and "phases" in result:
-            return result
-    except Exception:
-        pass
-    return {
-        "overview": f"A structured path to mastering {topic}.",
-        "phases": [], "key_skills": [], "resources": [],
-    }
-
+    text = await _invoke(prompt, {"topic": topic, "papers": papers_text}, "Roadmap generation")
+    result = _safe_json(text, accept=_has_list("phases"))
+    if result is None:
+        raise LLMError("Roadmap generation failed: the model did not return the roadmap JSON")
+    return result

@@ -2,6 +2,7 @@ import csv, io, json
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response
 from pydantic import BaseModel
+from starlette.concurrency import run_in_threadpool
 from typing import Optional
 from app.mcp.arxiv import ArxivMCP
 from app.mcp.semantic_scholar import SemanticScholarMCP
@@ -9,6 +10,7 @@ from app.mcp.github import GitHubMCP
 from app.services.graph import build_knowledge_graph, build_citation_graph, fetch_neo4j_subgraph
 from app.rag.vectorstore import add_papers, query as rag_query, count as rag_count
 from app.agents import research_agent as agent
+from app.agents.research_agent import LLMError
 from app.db.database import (
     save_report, save_search, get_reports, get_searches,
     get_report_by_id, get_neo4j_stats
@@ -44,12 +46,39 @@ class CitationReq(BaseModel):
 
 # ── Helpers ───────────────────────────────────────────────────────────────
 def _merge(lists):
-    seen, out = set(), []
+    """Dedupe by title. The first copy wins, but a citation count reported by a
+    later source (Semantic Scholar) is kept instead of the arXiv copy's none."""
+    seen, out = {}, []
     for p in (p for lst in lists for p in lst):
         k = (p.get("title") or "").lower()[:60]
-        if k and k not in seen:
-            seen.add(k); out.append(p)
+        if not k:
+            continue
+        if k in seen:
+            first = seen[k]
+            if (p.get("citations") or 0) > (first.get("citations") or 0):
+                first["citations"] = p["citations"]
+            continue
+        seen[k] = p; out.append(p)
     return out
+
+
+async def _llm(coro):
+    """Await an agent call; LLM failures become 502 and nothing gets saved."""
+    try:
+        return await coro
+    except LLMError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+
+async def _topic_papers(topic: str, n_arxiv: int, n_scholar: int, top_up: bool = True):
+    papers = _merge([
+        await arxiv.search(topic, n_arxiv),
+        await scholar.search(topic, n_scholar),
+    ])
+    if top_up:
+        papers = await agent.top_up_papers(topic, papers)
+    await run_in_threadpool(add_papers, papers)
+    return papers
 
 
 # ── Search ────────────────────────────────────────────────────────────────
@@ -64,10 +93,10 @@ async def search(req: SearchReq):
     gh_res = await github.search(req.query, max_results=8)
 
     papers = _merge([arxiv_res, scholar_res])
-    add_papers(papers)
-    save_search(req.query, papers, gh_res)
+    await run_in_threadpool(add_papers, papers)
+    await run_in_threadpool(save_search, req.query, papers, gh_res)
 
-    graph = build_knowledge_graph(req.query, papers, gh_res)
+    graph = await run_in_threadpool(build_knowledge_graph, req.query, papers, gh_res)
     return {
         "papers": papers, "repos": gh_res,
         "graph": graph, "total": len(papers), "rag_count": rag_count()
@@ -78,85 +107,70 @@ async def search(req: SearchReq):
 @router.post("/citations")
 async def get_citations(req: CitationReq):
     data = await scholar.get_citations(req.title)
-    graph = build_citation_graph(req.title, data)
+    graph = await run_in_threadpool(build_citation_graph, req.title, data)
     return {"data": data, "graph": graph}
 
 
 # ── Literature Review ─────────────────────────────────────────────────────
 @router.post("/review")
 async def literature_review(req: TopicReq):
-    papers = _merge([
-        await arxiv.search(req.topic, 10),
-        await scholar.search(req.topic, 8),
-    ])
+    # the review cites papers as [1]..[10] in this order, so return and save exactly these
+    papers = (await _topic_papers(req.topic, 10, 8))[:10]
     repos = await github.search(req.topic, max_results=6)
-    add_papers(papers)
-    review = await agent.generate_literature_review(req.topic, papers)
-    save_report(req.topic, "literature_review", review, repos=repos, papers=papers[:10])
-    return {"review": review, "papers": papers[:10], "repos": repos}
+    review = await _llm(agent.generate_literature_review(req.topic, papers))
+    await run_in_threadpool(save_report, req.topic, "literature_review", review, repos=repos, papers=papers)
+    return {"review": review, "papers": papers, "repos": repos}
 
 
 # ── Literature Survey ─────────────────────────────────────────────────────
 @router.post("/survey")
 async def survey(req: TopicReq):
-    papers = _merge([
-        await arxiv.search(req.topic, 10),
-        await scholar.search(req.topic, 8),
-    ])
+    papers = await _topic_papers(req.topic, 10, 8)
     repos = await github.search(req.topic, max_results=6)
-    add_papers(papers)
-    result = await agent.generate_survey(req.topic, papers)
-    graph  = build_knowledge_graph(req.topic, papers, repos)
-    save_report(req.topic, "survey", str(result), repos=repos, papers=papers[:10])
+    result = await _llm(agent.generate_survey(req.topic, papers))
+    graph  = await run_in_threadpool(build_knowledge_graph, req.topic, papers, repos)
+    await run_in_threadpool(save_report, req.topic, "survey", json.dumps(result), repos=repos, papers=papers[:10])
     return {"survey": result, "papers": papers[:10], "repos": repos, "graph": graph}
 
 
 # ── Research Gaps ─────────────────────────────────────────────────────────
 @router.post("/gaps")
 async def gaps(req: TopicReq):
-    papers = _merge([
-        await arxiv.search(req.topic, 10),
-        await scholar.search(req.topic, 8),
-    ])
+    papers = await _topic_papers(req.topic, 10, 8)
     repos = await github.search(req.topic, max_results=6)
-    add_papers(papers)
-    result = await agent.detect_research_gaps(req.topic, papers)
-    save_report(req.topic, "gaps", str(result), repos=repos, papers=papers)
+    result = await _llm(agent.detect_research_gaps(req.topic, papers))
+    await run_in_threadpool(save_report, req.topic, "gaps", json.dumps(result), repos=repos, papers=papers)
     return {"gaps": result, "papers_analysed": len(papers), "repos": repos}
 
 
 # ── Compare Papers ────────────────────────────────────────────────────────
 @router.post("/compare")
 async def compare(req: CompareReq):
-    return await agent.compare_papers(req.paper_a, req.paper_b)
+    return await _llm(agent.compare_papers(req.paper_a, req.paper_b))
 
 
 # ── Chat / Q&A ────────────────────────────────────────────────────────────
 @router.post("/chat")
 async def chat(req: ChatReq):
     if req.use_rag and rag_count() > 0:
-        papers = rag_query(req.question, n_results=8)
+        papers = await run_in_threadpool(rag_query, req.question, 8)
     else:
         papers = _merge([
             await arxiv.search(req.question, 6),
             await scholar.search(req.question, 4),
         ])
-        add_papers(papers)
-    answer = await agent.answer_question(req.question, papers)
+        await run_in_threadpool(add_papers, papers)
+    answer = await _llm(agent.answer_question(req.question, papers))
     return {"answer": answer, "sources": papers[:6]}
 
 
 # ── Research Roadmap ──────────────────────────────────────────────────────
 @router.post("/roadmap")
 async def roadmap(req: TopicReq):
-    papers = _merge([
-        await arxiv.search(req.topic, 8),
-        await scholar.search(req.topic, 6),
-    ])
+    papers = await _topic_papers(req.topic, 8, 6, top_up=False)
     repos = await github.search(req.topic, max_results=6)
-    add_papers(papers)
-    result = await agent.generate_roadmap(req.topic, papers)
-    save_report(req.topic, "roadmap", str(result), repos=repos, papers=papers)
+    result = await _llm(agent.generate_roadmap(req.topic, papers))
+    await run_in_threadpool(save_report, req.topic, "roadmap", json.dumps(result), repos=repos, papers=papers)
     return {"roadmap": result, "papers": papers, "repos": repos}
 
 
@@ -214,9 +228,16 @@ class UpdateCitationsReq(BaseModel):
 @router.post("/db/crud/create")
 def crud_create_paper(req: CreatePaperReq):
     from app.db.crud import create_paper_node
-    return create_paper_node(req.model_dump())
+    try:
+        created = create_paper_node(req.model_dump())
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    if not created:
+        raise HTTPException(status_code=503, detail="Neo4j is not connected")
+    return created
 
-@router.get("/db/crud/read/{paper_id}")
+# :path so ids that are URLs (http://arxiv.org/abs/...) can be addressed
+@router.get("/db/crud/read/{paper_id:path}")
 def crud_read_paper(paper_id: str):
     from app.db.crud import read_paper_node
     paper = read_paper_node(paper_id)
@@ -227,12 +248,15 @@ def crud_read_paper(paper_id: str):
 @router.put("/db/crud/update")
 def crud_update_paper(req: UpdateCitationsReq):
     from app.db.crud import update_paper_citations
-    res = update_paper_citations(req.paper_id, req.citations)
+    try:
+        res = update_paper_citations(req.paper_id, req.citations)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     if not res:
         raise HTTPException(status_code=404, detail="Paper not found to update")
     return res
 
-@router.delete("/db/crud/delete/{paper_id}")
+@router.delete("/db/crud/delete/{paper_id:path}")
 def crud_delete_paper(paper_id: str):
     from app.db.crud import delete_paper_node
     return delete_paper_node(paper_id)
@@ -283,7 +307,10 @@ def query_research_gaps(topic_a: str = Query(..., description="First topic"), to
 def query_explain(req: ExplainReq):
     """Executes an EXPLAIN query plan to inspect index lookups and performance."""
     from app.db.queries import explain_query
-    return explain_query(req.query, req.params)
+    res = explain_query(req.query, req.params)
+    if not res.get("has_plan"):
+        raise HTTPException(status_code=503 if res.get("offline") else 400, detail=res.get("error"))
+    return res
 
 
 

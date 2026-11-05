@@ -22,10 +22,17 @@ async def lifespan(app: FastAPI):
     # Safely close Neo4j connection pool on shutdown
     close_neo4j_client()
 
+DEFAULT_CORS_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173"
+
+def _cors_origins() -> list:
+    """Comma-separated CORS_ORIGINS; the API has unauthenticated write endpoints, so no wildcard by default."""
+    raw = os.getenv("CORS_ORIGINS", "").strip() or DEFAULT_CORS_ORIGINS
+    return [o.strip().rstrip("/") for o in raw.split(",") if o.strip()]
+
 app = FastAPI(title="Research Intelligence Platform (Neo4j Graph Powered)", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_cors_origins(),
     allow_methods=["*"],
     allow_headers=["*"]
 )

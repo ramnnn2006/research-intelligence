@@ -1,12 +1,18 @@
 import aiohttp, os, xml.etree.ElementTree as ET
 
+
+def _env_token(name: str) -> str:
+    """Env value, treating blanks and .env.example placeholders (your_..., optional) as unset."""
+    value = os.getenv(name, "").strip()
+    return "" if not value or value.lower().startswith(("your_", "optional")) else value
+
 class PubMedMCP:
     BASE = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
 
     def _params(self, **extra) -> dict:
         params = {"db": "pubmed", **extra}
         # without a key NCBI allows 3 requests/sec, with one it's 10
-        key = os.getenv("NCBI_API_KEY", "")
+        key = _env_token("NCBI_API_KEY")
         if key: params["api_key"] = key
         return params
 

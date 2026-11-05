@@ -5,10 +5,11 @@ services:
     image: neo4j:5.18.0-community
     container_name: research_neo4j
     ports:
-      - "7474:7474" # HTTP Browser UI
-      - "7687:7687" # Bolt Protocol
+      # localhost only: the default password is public in this repo
+      - "127.0.0.1:7474:7474" # HTTP Browser UI
+      - "127.0.0.1:7687:7687" # Bolt Protocol
     environment:
-      - NEO4J_AUTH=neo4j/research123
+      - NEO4J_AUTH=neo4j/${NEO4J_PASSWORD:-research123}
       - NEO4J_PLUGINS=["apoc"]
       - NEO4J_dbms_security_procedures_unrestricted=apoc.*
       - NEO4J_dbms_memory_heap_initial__size=512m
