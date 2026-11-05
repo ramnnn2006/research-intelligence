@@ -24,6 +24,20 @@ services:
       retries: 5
       start_period: 20s
 
+  mongodb:
+    image: mongo:7
+    container_name: research_mongo
+    ports:
+      - "127.0.0.1:27017:27017" # localhost only, no auth in development
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ping: 1}).ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   neo4j_data:
   neo4j_logs:
+  mongo_data:

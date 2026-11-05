@@ -4,6 +4,7 @@ import datetime
 import logging
 from typing import Dict, List, Optional, Any
 from app.db.neo4j_client import get_neo4j_client, init_neo4j_schema
+from app.db import mongo_client
 from app.db.ids import canonical_paper_id, arxiv_id_from
 
 logger = logging.getLogger("research_iq.database")
@@ -111,6 +112,23 @@ CALL {
 }
 """
 
+
+def _mirror_to_mongo(fn, *args) -> None:
+    """Copy a write to the MongoDB document store. Never fails the caller."""
+    try:
+        fn(*args)
+    except Exception as e:
+        logger.warning("MongoDB mirror write failed (%s): %s", getattr(fn, "__name__", fn), e)
+
+
+def _with_fallback(primary: List[Dict[str, Any]], extra: List[Dict[str, Any]], limit: int) -> List[Dict[str, Any]]:
+    """Merge MongoDB rows with in-memory rows saved while both stores were down, newest first."""
+    seen = {str(r.get("id")) for r in primary}
+    rows = list(primary) + [r for r in extra if str(r.get("id")) not in seen]
+    rows.sort(key=lambda r: str(r.get("created_at") or ""), reverse=True)
+    return rows[:limit]
+
+
 # ── Save Search ─────────────────────────────────────────────────────────────
 def save_search(query: str, papers: list, repos: list) -> str:
     """
@@ -121,6 +139,8 @@ def save_search(query: str, papers: list, repos: list) -> str:
     search_id = str(uuid.uuid4())[:8]
     created_at = _now_iso()
     cleaned_papers, cleaned_repos = _clean_inputs(papers, repos)
+    _mirror_to_mongo(mongo_client.save_papers, cleaned_papers)
+    _mirror_to_mongo(mongo_client.save_search, search_id, query, cleaned_papers, cleaned_repos, created_at)
 
     client = get_neo4j_client()
     if client.connect():
@@ -181,6 +201,8 @@ def save_report(topic: str, rtype: str, content: str, repos: list = None, papers
     report_id = str(uuid.uuid4())[:8]
     created_at = _now_iso()
     cleaned_papers, cleaned_repos = _clean_inputs(papers, repos)
+    _mirror_to_mongo(mongo_client.save_papers, cleaned_papers)
+    _mirror_to_mongo(mongo_client.save_report, report_id, topic, rtype, content, cleaned_repos, cleaned_papers, created_at)
 
     client = get_neo4j_client()
     if client.connect():
@@ -261,8 +283,8 @@ def get_reports(limit: int = 50) -> List[Dict[str, Any]]:
         except Exception as e:
             logger.error("Failed to fetch reports from Neo4j: %s", e)
 
-    # Fallback
-    return [
+    # Fallback: MongoDB document store, then in-memory
+    memory = [
         {
             "id": r["id"],
             "topic": r["topic"],
@@ -271,6 +293,9 @@ def get_reports(limit: int = 50) -> List[Dict[str, Any]]:
         }
         for r in client._fallback_store["reports"][:limit]
     ]
+    if mongo_client.is_available():
+        return _with_fallback(mongo_client.get_reports(limit), memory, limit)
+    return memory
 
 
 # ── Get Searches ────────────────────────────────────────────────────────────
@@ -297,8 +322,8 @@ def get_searches(limit: int = 30) -> List[Dict[str, Any]]:
         except Exception as e:
             logger.error("Failed to fetch searches from Neo4j: %s", e)
 
-    # Fallback
-    return [
+    # Fallback: MongoDB document store, then in-memory
+    memory = [
         {
             "id": s["id"],
             "query": s["query"],
@@ -307,6 +332,9 @@ def get_searches(limit: int = 30) -> List[Dict[str, Any]]:
         }
         for s in client._fallback_store["searches"][:limit]
     ]
+    if mongo_client.is_available():
+        return _with_fallback(mongo_client.get_searches(limit), memory, limit)
+    return memory
 
 
 # ── Get Report By ID ────────────────────────────────────────────────────────
@@ -354,10 +382,12 @@ def get_report_by_id(rid: Any) -> Optional[Dict[str, Any]]:
         except Exception as e:
             logger.error("Failed to fetch report %s from Neo4j: %s", rid, e)
 
-    # Fallback
+    # Fallback: in-memory first (newest writes while both stores were down), then MongoDB
     for r in client._fallback_store["reports"]:
         if str(r["id"]) == rid_str:
             return r
+    if mongo_client.is_available():
+        return mongo_client.get_report_by_id(rid_str)
     return None
 
 

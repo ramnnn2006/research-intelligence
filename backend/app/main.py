@@ -12,14 +12,19 @@ from fastapi.staticfiles import StaticFiles
 from app.api.routes import router
 from app.db.database import init_db
 from app.db.neo4j_client import close_neo4j_client
+from app.db import knowledge_graph, mongo_client
 from app.db.health import get_db_health
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Initialize Neo4j graph database schema & constraints on startup
+    # Neo4j schema (graph store) and MongoDB indexes (document store) on startup.
+    # Both return quickly when their server is not reachable.
     init_db()
+    knowledge_graph.ensure_schema()
+    mongo_client.init_mongo_schema()
     yield
-    # Safely close Neo4j connection pool on shutdown
+    # Close both connection pools on shutdown
+    mongo_client.close_mongo_client()
     close_neo4j_client()
 
 DEFAULT_CORS_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173"

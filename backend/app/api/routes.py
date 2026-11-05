@@ -209,6 +209,36 @@ def explore_graph(topic: Optional[str] = Query(default="", description="Topic to
     return fetch_neo4j_subgraph(topic=topic, limit=limit)
 
 
+# ── Polyglot NoSQL status (Neo4j graph store + MongoDB document store) ─────
+@router.get("/neo4j/status")
+def neo4j_status():
+    from app.db.knowledge_graph import get_neo4j_status
+    return get_neo4j_status()
+
+@router.get("/mongodb/status")
+def mongodb_status():
+    from app.db.mongo_client import get_mongo_stats
+    return get_mongo_stats()
+
+@router.get("/nosql/status")
+def nosql_status():
+    from app.db.knowledge_graph import get_neo4j_status
+    from app.db.mongo_client import get_mongo_stats
+    return {
+        "architecture": "Polyglot NoSQL Architecture",
+        "graph_store": {
+            "engine": "Neo4j",
+            "role": "Citation networks, authorship, topics, repositories, models and datasets",
+            **get_neo4j_status(),
+        },
+        "document_store": {
+            "engine": "MongoDB",
+            "role": "Search and report documents, paper metadata and chat history",
+            **get_mongo_stats(),
+        },
+    }
+
+
 # ── Neo4j Explicit CRUD Endpoints ──────────────────────────────────────────
 class CreatePaperReq(BaseModel):
     id: Optional[str] = None
