@@ -26,10 +26,26 @@ async function get(path) {
   return r.json()
 }
 
+async function del(path) {
+  const r = await fetch(BASE + path, { method: 'DELETE' })
+  if (!r.ok) throw await errorFrom(r)
+  return r.json()
+}
+
+async function upload(path, file) {
+  const fd = new FormData()
+  fd.append('file', file)
+  const r = await fetch(BASE + path, { method: 'POST', body: fd })
+  if (!r.ok) throw await errorFrom(r)
+  return r.json()
+}
+
 export const api = {
   search:   (query, sources = ['arxiv', 'semantic_scholar'], max_results = 10) =>
               post('/search', { query, sources, max_results }),
-  citations: (title)              => post('/citations', { title }),
+  citations: (title, limit = 15)  => post('/citations', { title, limit }),
+  searchAuthor: (name, max_results = 20) => post('/author/search', { name, max_results }),
+  getAuthor:    (name, limit = 20)       => get(`/author?name=${encodeURIComponent(name)}&limit=${limit}`),
   review:    (topic)              => post('/review',    { topic }),
   survey:    (topic)              => post('/survey',    { topic }),
   gaps:      (topic)              => post('/gaps',      { topic }),
@@ -41,5 +57,25 @@ export const api = {
   ragCount:     ()                   => get('/rag/count'),
   dbStats:      ()                   => get('/db/stats'),
   exploreGraph: (topic = '', limit = 30) => get(`/graph/explore?topic=${encodeURIComponent(topic)}&limit=${limit}`),
+  neo4jStatus:   ()                 => get('/neo4j/status'),
+  neo4jMultihop: (title, hops = 2)  => post('/neo4j/citations/multihop', { title, hops }),
+  neo4jGraph:    (topic)            => get(`/neo4j/graph/${encodeURIComponent(topic)}`),
+  mongoStatus:   ()                 => get('/mongodb/status'),
+  nosqlStatus:   ()                 => get('/nosql/status'),
+  pdfStatus:     ()                 => get('/pdf/status'),
+  pdfClear:      ()                 => del('/pdf/clear'),
+  pdfChat:       (question)         => post('/pdf/chat', { question }),
+  pdfFetchArxiv: (arxiv_id)         => post('/pdf/fetch_arxiv', { arxiv_id }),
+  pdfUpload:     (file)             => upload('/pdf/upload', file),
+  graphAnalytics: (params = {}) => {
+    const q = new URLSearchParams()
+    if (params.topic) q.append('topic', params.topic)
+    if (params.metric) q.append('metric', params.metric)
+    if (params.limit) q.append('limit', params.limit)
+    return get(`/graph/analytics?${q.toString()}`)
+  },
+  graphSyncMetrics: ()              => post('/graph/sync_metrics', {}),
+  hfModels:   (query, limit = 8)    => get(`/hf/models?query=${encodeURIComponent(query)}&limit=${limit}`),
+  hfDatasets: (query, limit = 8)    => get(`/hf/datasets?query=${encodeURIComponent(query)}&limit=${limit}`),
 }
 

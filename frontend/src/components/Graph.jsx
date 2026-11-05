@@ -5,10 +5,24 @@ import { escapeHtml, safeHttpUrl } from '../utils/safe'
 const COLORS = {
   topic: '#58a6ff', paper: '#8b949e', repo: '#bc8cff',
   author: '#e3b341', root: '#3fb950', cited_by: '#f85149', reference: '#58a6ff',
+  model: '#ff9d00', dataset: '#00b4d8',
 }
 const SIZES = {
   topic: 16, paper: 9, repo: 11, author: 7, root: 16, cited_by: 8, reference: 8,
+  model: 11, dataset: 10,
 }
+
+// Edge colour by relationship (search graph uses lower case, the Neo4j export upper case)
+function linkColor(relation) {
+  const r = String(relation || '').toLowerCase()
+  if (r === 'authored') return '#e3b341'
+  if (r === 'model') return '#ff9d00'
+  if (r === 'dataset') return '#00b4d8'
+  if (r === 'implementation' || r === 'implements') return '#bc8cff'
+  return '#58a6ff'
+}
+
+const radius = d => Number(d.size) || SIZES[d.type] || 9
 
 // depth / onDepthChange are optional, pass them to show the hop slider
 export default function Graph({ data, height = 420, depth, onDepthChange }) {
@@ -61,7 +75,7 @@ export default function Graph({ data, height = 420, depth, onDepthChange }) {
 
     const nodes = data.nodes.map(n => ({ ...n }))
     const nodeSet = new Set(nodes.map(n => n.id))
-    const links = (data.links || [])
+    const links = (data.links || data.edges || [])
       .map(l => ({ ...l }))
       .filter(l => {
         const s = typeof l.source === 'object' ? l.source.id : l.source
@@ -75,26 +89,27 @@ export default function Graph({ data, height = 420, depth, onDepthChange }) {
       .force('center', d3.forceCenter(W / 2, H / 2))
       .force('x', d3.forceX(W / 2).strength(0.05))
       .force('y', d3.forceY(H / 2).strength(0.05))
-      .force('collision', d3.forceCollide(d => (SIZES[d.type] || 9) + 8))
+      .force('collision', d3.forceCollide(d => radius(d) + 8))
 
     // Links
     const linkEl = g.append('g')
       .selectAll('line')
       .data(links)
       .enter().append('line')
-      .attr('stroke', '#30363d')
-      .attr('stroke-width', 1.5)
-      .attr('stroke-opacity', 0.8)
+      .attr('stroke', d => linkColor(d.relation))
+      .attr('stroke-width', 1.6)
+      .attr('stroke-opacity', 0.65)
 
     // Nodes
     const nodeEl = g.append('g')
       .selectAll('circle')
       .data(nodes)
       .enter().append('circle')
-      .attr('r', d => SIZES[d.type] || 9)
+      .attr('r', radius)
+      // type decides the fill, seed / top influential nodes get a ring instead
       .attr('fill', d => COLORS[d.type] || '#8b949e')
-      .attr('stroke', d => d.seed ? '#3fb950' : '#07090f')
-      .attr('stroke-width', d => d.seed ? 3 : 2)
+      .attr('stroke', d => d.seed ? '#3fb950' : d.is_top_influential ? '#ffffff' : '#07090f')
+      .attr('stroke-width', d => d.seed ? 3 : d.is_top_influential ? 2.5 : 2)
       .style('cursor', 'pointer')
       .call(
         d3.drag()
@@ -113,7 +128,7 @@ export default function Graph({ data, height = 420, depth, onDepthChange }) {
       .attr('font-size', 11)
       .attr('font-family', '-apple-system, system-ui, sans-serif')
       .attr('text-anchor', 'middle')
-      .attr('dy', d => -(SIZES[d.type] || 9) - 6)
+      .attr('dy', d => -radius(d) - 6)
       .attr('pointer-events', 'none')
       .text(d => {
         const lbl = String(d.label || d.id || '')
@@ -149,6 +164,10 @@ export default function Graph({ data, height = 420, depth, onDepthChange }) {
         if (d.year) html += `<br/><span style="color:#8b949e">Year: ${escapeHtml(d.year)}</span>`
         if (d.citations) html += `<br/><span style="color:#8b949e">Citations: ${escapeHtml(d.citations.toLocaleString())}</span>`
         if (d.stars) html += `<br/><span style="color:#e3b341">⭐ ${escapeHtml(d.stars.toLocaleString())}</span>`
+        if (d.pagerank != null) html += `<br/><span style="color:#58a6ff">PageRank: ${escapeHtml(d.pagerank)}</span>`
+        if (d.betweenness != null) html += `<br/><span style="color:#bc8cff">Betweenness: ${escapeHtml(d.betweenness)}</span>`
+        if (d.community != null) html += `<br/><span style="color:#e3b341">Cluster: ${escapeHtml(d.community)}</span>`
+        if (d.is_top_influential) html += `<br/><span style="color:#ffffff">Top influential</span>`
         if (d.seed) html += `<br/><span style="color:#3fb950">Seed paper</span>`
         tip.html(html)
           .style('opacity', '1')
@@ -215,7 +234,7 @@ export default function Graph({ data, height = 420, depth, onDepthChange }) {
       </div>
       {hasNodes && (
         <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginTop: 8, fontSize: 11, color: '#8b949e' }}>
-          {[['#58a6ff', 'Topic'], ['#8b949e', 'Paper'], ['#bc8cff', 'Repo'], ['#e3b341', 'Author'], ['#3fb950', 'Root']].map(([c, l]) => (
+          {[['#58a6ff', 'Topic'], ['#8b949e', 'Paper'], ['#ff9d00', 'Model'], ['#00b4d8', 'Dataset'], ['#bc8cff', 'Repo'], ['#e3b341', 'Author'], ['#3fb950', 'Root']].map(([c, l]) => (
             <span key={l} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: c, display: 'inline-block' }} />
               {l}

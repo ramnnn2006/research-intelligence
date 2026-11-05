@@ -166,7 +166,7 @@ export default function History({ active = true }) {
 
   async function openReport(id) {
     try {
-      const r = await fetch(`/api/reports/${id}`)
+      const r = await fetch(`/api/reports/${encodeURIComponent(id)}`)
       if (!r.ok) return
       setSelected({ _type: 'report', ...(await r.json()) })
     } catch {}
