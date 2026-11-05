@@ -1,4 +1,5 @@
 import React, { useState, createContext, useContext } from 'react'
+import ErrorBoundary from './components/ErrorBoundary'
 import Discover from './pages/Discover'
 import Review from './pages/Review'
 import Survey from './pages/Survey'
@@ -12,6 +13,18 @@ import Analytics from './pages/Analytics'
 // Shared context so any tab can read/write the global topic
 export const TopicContext = createContext({ topic: '', setTopic: () => {} })
 export const useTopicContext = () => useContext(TopicContext)
+
+// Topic input for a tab: follows the header topic until the user types in the
+// tab's own field. commit() publishes a value to the header and resumes following.
+export function useTopicField() {
+  const { topic: globalTopic, setTopic: setGlobalTopic } = useTopicContext()
+  const [local, setLocal] = useState('')
+  const [edited, setEdited] = useState(false)
+  const value = edited ? local : globalTopic
+  const edit = v => { setLocal(v); setEdited(true) }
+  const commit = v => { setGlobalTopic(v); setLocal(v); setEdited(false) }
+  return [value, edit, commit]
+}
 
 const TABS = [
   { id: 'discover', label: '🔍 Discover' },
@@ -91,7 +104,7 @@ export default function App() {
             ['compare',  <Compare />],
             ['chat',     <Chat />],
             ['roadmap',  <Roadmap />],
-            ['history',  <History />],
+            ['history',  <History active={tab === 'history'} />],
             ['analytics', <Analytics />],
           ].map(([id, page]) => (
             <div key={id} style={{
@@ -99,7 +112,7 @@ export default function App() {
               display: tab === id ? 'block' : 'none',
               overflow: 'hidden',
             }}>
-              {page}
+              <ErrorBoundary name={id}>{page}</ErrorBoundary>
             </div>
           ))}
         </main>

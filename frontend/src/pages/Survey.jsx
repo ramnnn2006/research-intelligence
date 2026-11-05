@@ -1,41 +1,48 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { api } from '../services/api'
-import { useTopicContext } from '../App'
+import { useTopicField } from '../App'
 import Graph from '../components/Graph'
 import Spinner from '../components/Spinner'
+import { toText, asArray } from '../utils/safe'
 
 export default function Survey() {
-  const { topic: globalTopic, setTopic: setGlobalTopic } = useTopicContext()
-  const [topic, setTopic] = useState(globalTopic || '')
+  // follows the header topic until edited here
+  const [topic, setTopic, commitTopic] = useTopicField()
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
   const [error, setError] = useState('')
-
-  useEffect(() => { if (globalTopic && !topic) setTopic(globalTopic) }, [globalTopic])
+  const [ranTopic, setRanTopic] = useState('')
 
   async function run() {
     if (!topic.trim() || loading) return
-    setGlobalTopic(topic)
+    const t = topic
+    commitTopic(t)
     setLoading(true); setError(''); setResult(null)
-    try { setResult(await api.survey(topic)) }
+    try { setResult(await api.survey(t)); setRanTopic(t) }
     catch (e) { setError(e.message) }
-    setLoading(false)
+    finally { setLoading(false) }
   }
+
+  // LLM output: make sure every field is plain text before rendering
+  const raw = result?.survey
+  const s = raw && typeof raw === 'object' && !Array.isArray(raw) ? {
+    introduction: toText(raw.introduction),
+    sections: asArray(raw.sections).map(sec => ({ heading: toText(sec?.heading), content: typeof sec === 'string' ? sec : toText(sec?.content) })),
+    conclusion: toText(raw.conclusion),
+    gaps: asArray(raw.gaps).map(toText).filter(Boolean),
+  } : null
 
   function exportMd() {
-    if (!result) return
-    const s = result.survey || {}
-    let md = `# Literature Survey: ${topic}\n\n`
+    if (!s) return
+    let md = `# Literature Survey: ${ranTopic}\n\n`
     if (s.introduction) md += `## Introduction\n${s.introduction}\n\n`
-    ;(s.sections || []).forEach(sec => { md += `## ${sec.heading}\n${sec.content}\n\n` })
+    s.sections.forEach(sec => { md += `## ${sec.heading}\n${sec.content}\n\n` })
     if (s.conclusion) md += `## Conclusion\n${s.conclusion}\n\n`
-    if (s.gaps?.length) md += `## Research Gaps\n${s.gaps.map(g => `- ${g}`).join('\n')}\n`
+    if (s.gaps.length) md += `## Research Gaps\n${s.gaps.map(g => `- ${g}`).join('\n')}\n`
     const a = document.createElement('a')
     a.href = URL.createObjectURL(new Blob([md], { type: 'text/plain' }))
-    a.download = `survey_${topic.replace(/\W+/g, '_').substring(0, 30)}.md`; a.click()
+    a.download = `survey_${ranTopic.replace(/\W+/g, '_').substring(0, 30)}.md`; a.click()
   }
-
-  const s = result?.survey
 
   return (
     <div style={{ height: '100%', overflowY: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -61,13 +68,13 @@ export default function Survey() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 16, alignItems: 'start' }}>
           <div style={{ background: '#161b22', border: '1px solid #21262d', borderRadius: 8, padding: 20 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h3 style={{ fontSize: 15 }}>Survey: {topic}</h3>
+              <h3 style={{ fontSize: 15 }}>Survey: {ranTopic}</h3>
               <button onClick={exportMd} style={{ background: 'none', border: '1px solid #58a6ff', color: '#58a6ff', borderRadius: 6, padding: '5px 12px', fontSize: 12, cursor: 'pointer' }}>⬇ Export .md</button>
             </div>
             {s.introduction && (
               <div style={{ background: '#0d1117', borderLeft: '3px solid #58a6ff', padding: '12px 14px', borderRadius: 4, marginBottom: 18, fontSize: 13, color: '#8b949e', lineHeight: 1.75 }}>{s.introduction}</div>
             )}
-            {(s.sections || []).map((sec, i) => (
+            {s.sections.map((sec, i) => (
               <div key={i} style={{ marginBottom: 18 }}>
                 <h4 style={{ color: '#bc8cff', fontSize: 14, marginBottom: 7, fontWeight: 600 }}>{sec.heading}</h4>
                 <p style={{ fontSize: 13, color: '#8b949e', lineHeight: 1.75, margin: 0 }}>{sec.content}</p>
@@ -78,7 +85,7 @@ export default function Survey() {
                 <strong style={{ color: '#3fb950' }}>Conclusion: </strong>{s.conclusion}
               </div>
             )}
-            {s.gaps?.length > 0 && (
+            {s.gaps.length > 0 && (
               <div style={{ marginTop: 20 }}>
                 <h4 style={{ color: '#e3b341', fontSize: 14, marginBottom: 10 }}>💡 Research Gaps</h4>
                 {s.gaps.map((g, i) => (

@@ -1,30 +1,42 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { api } from '../services/api'
-import { useTopicContext } from '../App'
+import { useTopicField } from '../App'
 import Spinner from '../components/Spinner'
 import RepoList from '../components/RepoList'
+import { toText, asArray, safeHttpUrl } from '../utils/safe'
 
 const PC = ['#58a6ff', '#bc8cff', '#3fb950', '#e3b341']
 
 export default function Roadmap() {
-  const { topic: globalTopic, setTopic: setGlobalTopic } = useTopicContext()
-  const [topic, setTopic] = useState(globalTopic || '')
+  // follows the header topic until edited here
+  const [topic, setTopic, commitTopic] = useTopicField()
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
   const [error, setError] = useState('')
 
-  useEffect(() => { if (globalTopic && !topic) setTopic(globalTopic) }, [globalTopic])
-
   async function run() {
     if (!topic.trim() || loading) return
-    setGlobalTopic(topic)
+    const t = topic
+    commitTopic(t)
     setLoading(true); setError(''); setResult(null)
-    try { setResult(await api.roadmap(topic)) }
+    try { setResult(await api.roadmap(t)) }
     catch (e) { setError(e.message) }
-    setLoading(false)
+    finally { setLoading(false) }
   }
 
-  const r = result?.roadmap
+  // LLM output: normalise every field to text / arrays before rendering
+  const rawRoadmap = result?.roadmap
+  const r = rawRoadmap && typeof rawRoadmap === 'object' && !Array.isArray(rawRoadmap) ? {
+    overview: toText(rawRoadmap.overview),
+    phases: asArray(rawRoadmap.phases).map(ph => ({
+      phase: toText(ph?.phase),
+      duration: toText(ph?.duration),
+      tasks: asArray(ph?.tasks).map(toText).filter(Boolean),
+      papers: asArray(ph?.papers),
+    })),
+    key_skills: asArray(rawRoadmap.key_skills).map(toText).filter(Boolean),
+    resources: asArray(rawRoadmap.resources).map(toText).filter(Boolean),
+  } : null
   // Build a title→paper lookup so phase papers get clickable links
   const paperIndex = {}
   ;(result?.papers || []).forEach(p => {
@@ -34,6 +46,7 @@ export default function Roadmap() {
 
   function findPaper(title) {
     const key = (title || '').toLowerCase().substring(0, 50)
+    if (!key) return null
     // Exact match first
     if (paperIndex[key]) return paperIndex[key]
     // Fuzzy: find any paper whose title contains the first 20 chars of this title
@@ -81,14 +94,14 @@ export default function Roadmap() {
               </div>
             )}
 
-            {(r.phases || []).map((phase, i) => (
+            {r.phases.map((phase, i) => (
               <div key={i} style={{ background: '#161b22', border: '1px solid #21262d', borderLeft: `3px solid ${PC[i % 4]}`, borderRadius: 8, padding: 16 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
                   <span style={{ background: `${PC[i % 4]}18`, color: PC[i % 4], padding: '3px 10px', borderRadius: 99, fontSize: 12, fontWeight: 700 }}>
                     Phase {i + 1}
                   </span>
                   <span style={{ fontWeight: 600, fontSize: 14, color: '#e6edf3' }}>
-                    {(phase.phase || '').replace(/^Phase \d+[:\-\s]*/i, '')}
+                    {phase.phase.replace(/^Phase \d+[:\-\s]*/i, '')}
                   </span>
                   {phase.duration && (
                     <span style={{ marginLeft: 'auto', fontSize: 11, color: '#8b949e', background: '#0d1117', padding: '2px 8px', borderRadius: 4 }}>
@@ -98,7 +111,7 @@ export default function Roadmap() {
                 </div>
 
                 {/* Tasks */}
-                {phase.tasks?.length > 0 && (
+                {phase.tasks.length > 0 && (
                   <div style={{ marginBottom: 14 }}>
                     <div style={{ fontSize: 11, color: '#6e7681', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Tasks</div>
                     {phase.tasks.map((t, j) => (
@@ -111,16 +124,18 @@ export default function Roadmap() {
                 )}
 
                 {/* Key Papers — with direct URLs from LLM */}
-                {phase.papers?.length > 0 && (
+                {phase.papers.length > 0 && (
                   <div>
                     <div style={{ fontSize: 11, color: '#6e7681', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Key Papers</div>
                     {phase.papers.map((p, j) => {
                       // LLM now returns {title, url} objects; fallback to string + fuzzy match
-                      const pTitle = typeof p === 'object' ? (p.title || '') : p
-                      const pUrl   = typeof p === 'object' ? (p.url || '') : ''
+                      const isObj  = p && typeof p === 'object'
+                      const pTitle = isObj ? toText(p.title) : toText(p)
+                      // only http(s) links, the URL is written by the LLM
+                      const pUrl   = isObj ? safeHttpUrl(p.url) : null
                       const matched = pUrl ? null : findPaper(pTitle)
-                      const url = pUrl || (matched ? (matched.url || matched.id) : null)
-                      const meta = matched || (typeof p === 'object' ? p : null)
+                      const url = pUrl || (matched ? safeHttpUrl(matched.url || matched.id) : null)
+                      const meta = matched || (isObj ? p : null)
                       return (
                         <div key={j} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '6px 0', borderBottom: j < phase.papers.length - 1 ? '1px solid #21262d' : 'none' }}>
                           <span style={{ color: '#e3b341', flexShrink: 0 }}>📄</span>
@@ -135,11 +150,11 @@ export default function Roadmap() {
                             ) : (
                               <span style={{ fontSize: 12, color: '#8b949e', lineHeight: 1.45 }}>{pTitle}</span>
                             )}
-                            {meta?.authors && (
+                            {Array.isArray(meta?.authors) && (
                               <div style={{ fontSize: 11, color: '#6e7681', marginTop: 2 }}>
-                                {(meta.authors || []).slice(0, 2).join(', ')}
-                                {meta.year ? ` · ${meta.year}` : ''}
-                                {meta.citations ? ` · ${meta.citations} citations` : ''}
+                                {meta.authors.slice(0, 2).map(toText).join(', ')}
+                                {meta.year ? ` · ${toText(meta.year)}` : ''}
+                                {meta.citations ? ` · ${toText(meta.citations)} citations` : ''}
                               </div>
                             )}
                           </div>
@@ -154,7 +169,7 @@ export default function Roadmap() {
 
           {/* Right sidebar: skills + resources + papers list */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {r.key_skills?.length > 0 && (
+            {r.key_skills.length > 0 && (
               <div style={{ background: '#161b22', border: '1px solid #21262d', borderRadius: 8, padding: 14 }}>
                 <h3 style={{ fontSize: 13, marginBottom: 10, color: '#bc8cff', fontWeight: 600 }}>🎯 Key Skills</h3>
                 {r.key_skills.map((s, i) => (
@@ -165,7 +180,7 @@ export default function Roadmap() {
               </div>
             )}
 
-            {r.resources?.length > 0 && (
+            {r.resources.length > 0 && (
               <div style={{ background: '#161b22', border: '1px solid #21262d', borderRadius: 8, padding: 14 }}>
                 <h3 style={{ fontSize: 13, marginBottom: 10, color: '#e3b341', fontWeight: 600 }}>📚 Resources</h3>
                 {r.resources.map((res, i) => (
@@ -189,7 +204,7 @@ export default function Roadmap() {
                 </h3>
                 {result.papers.map((p, i) => (
                   <div key={i} style={{ paddingBottom: 8, marginBottom: 8, borderBottom: i < result.papers.length - 1 ? '1px solid #21262d' : 'none' }}>
-                    <a href={p.url || p.id} target="_blank" rel="noreferrer"
+                    <a href={safeHttpUrl(p.url || p.id) || undefined} target="_blank" rel="noreferrer"
                       style={{ fontSize: 12, color: '#58a6ff', lineHeight: 1.4, display: 'block', textDecoration: 'none' }}
                       onMouseEnter={e => e.target.style.textDecoration = 'underline'}
                       onMouseLeave={e => e.target.style.textDecoration = 'none'}>

@@ -1,26 +1,27 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { api } from '../services/api'
-import { useTopicContext } from '../App'
+import { useTopicField } from '../App'
 import Spinner from '../components/Spinner'
+import { toText, asArray } from '../utils/safe'
 
 const COLORS = ['#58a6ff', '#bc8cff', '#3fb950', '#e3b341', '#f85149']
 
 export default function Gaps() {
-  const { topic: globalTopic, setTopic: setGlobalTopic } = useTopicContext()
-  const [topic, setTopic] = useState(globalTopic || '')
+  // follows the header topic until edited here
+  const [topic, setTopic, commitTopic] = useTopicField()
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
   const [error, setError] = useState('')
-
-  useEffect(() => { if (globalTopic && !topic) setTopic(globalTopic) }, [globalTopic])
+  const [ranTopic, setRanTopic] = useState('')
 
   async function run() {
     if (!topic.trim() || loading) return
-    setGlobalTopic(topic)
+    const t = topic
+    commitTopic(t)
     setLoading(true); setError(''); setResult(null)
-    try { setResult(await api.gaps(topic)) }
+    try { setResult(await api.gaps(t)); setRanTopic(t) }
     catch (e) { setError(e.message) }
-    setLoading(false)
+    finally { setLoading(false) }
   }
 
   return (
@@ -46,12 +47,12 @@ export default function Gaps() {
       {result && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <p style={{ fontSize: 13, color: '#8b949e', flexShrink: 0 }}>
-            Analysed <strong style={{ color: '#e6edf3' }}>{result.papers_analysed}</strong> papers on <strong style={{ color: '#58a6ff' }}>{topic}</strong>
+            Analysed <strong style={{ color: '#e6edf3' }}>{result.papers_analysed}</strong> papers on <strong style={{ color: '#58a6ff' }}>{ranTopic}</strong>
           </p>
-          {(result.gaps || []).map((gap, i) => (
+          {asArray(result.gaps).map((gap, i) => (
             <div key={i} style={{ background: '#161b22', border: '1px solid #21262d', borderLeft: `3px solid ${COLORS[i % 5]}`, borderRadius: 8, padding: '14px 16px', display: 'flex', gap: 14, alignItems: 'flex-start' }}>
               <div style={{ width: 30, height: 30, borderRadius: '50%', flexShrink: 0, background: `${COLORS[i % 5]}15`, color: COLORS[i % 5], display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13 }}>{i + 1}</div>
-              <div style={{ fontSize: 14, color: '#e6edf3', lineHeight: 1.65 }}>{gap}</div>
+              <div style={{ fontSize: 14, color: '#e6edf3', lineHeight: 1.65 }}>{toText(gap)}</div>
             </div>
           ))}
         </div>

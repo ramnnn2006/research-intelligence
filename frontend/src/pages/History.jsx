@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { api } from '../services/api'
 import RepoList from '../components/RepoList'
+import { toText, asArray, safeHttpUrl, parseTimestamp } from '../utils/safe'
 
 const TYPE_META = {
   literature_review: { label: 'Literature Review', color: '#58a6ff', icon: '📖' },
@@ -9,23 +10,159 @@ const TYPE_META = {
   roadmap:           { label: 'Roadmap',             color: '#3fb950', icon: '🗺️' },
 }
 
-export default function History() {
+function fmtDate(value, opts) {
+  const d = parseTimestamp(value)
+  return d ? d.toLocaleDateString('en-US', opts) : ''
+}
+
+function fmtDateTime(value) {
+  const d = parseTimestamp(value)
+  return d ? d.toLocaleString() : ''
+}
+
+// Survey, gaps and roadmap reports are stored as JSON strings. Older reports may
+// hold a Python repr instead, which does not parse, so those are shown raw.
+const JSON_REPORT_TYPES = ['survey', 'gaps', 'roadmap']
+
+function parseReport(type, content) {
+  if (!JSON_REPORT_TYPES.includes(type)) return null
+  if (content && typeof content === 'object') return content
+  if (typeof content !== 'string') return null
+  const t = content.trim()
+  if (!t.startsWith('{') && !t.startsWith('[')) return null
+  try { return JSON.parse(t) } catch { return null }
+}
+
+function isPlainObject(v) {
+  return v != null && typeof v === 'object' && !Array.isArray(v)
+}
+
+// Plain text / markdown version of a report, used for the export download
+function reportText(type, content) {
+  const data = parseReport(type, content)
+  if (data == null) return toText(content)
+  const lines = []
+  const list = items => asArray(items).map(toText).filter(Boolean).forEach(x => lines.push(`- ${x}`))
+  if (Array.isArray(data)) {
+    asArray(data).map(toText).forEach((g, i) => lines.push(`${i + 1}. ${g}`))
+  } else if (type === 'survey' && isPlainObject(data)) {
+    if (data.introduction) lines.push('## Introduction', toText(data.introduction), '')
+    asArray(data.sections).forEach(sec => lines.push(`## ${toText(sec?.heading)}`, toText(sec?.content), ''))
+    if (data.conclusion) lines.push('## Conclusion', toText(data.conclusion), '')
+    if (asArray(data.gaps).length) { lines.push('## Research Gaps'); list(data.gaps) }
+  } else if (type === 'roadmap' && isPlainObject(data)) {
+    if (data.overview) lines.push(toText(data.overview), '')
+    asArray(data.phases).forEach(ph => {
+      lines.push(`## ${toText(ph?.phase)}${ph?.duration ? ` (${toText(ph.duration)})` : ''}`)
+      list(ph?.tasks)
+      asArray(ph?.papers).forEach(pp => {
+        const title = isPlainObject(pp) ? toText(pp.title) : toText(pp)
+        const url = isPlainObject(pp) ? safeHttpUrl(pp.url) : null
+        if (title) lines.push(`- Paper: ${title}${url ? ` <${url}>` : ''}`)
+      })
+      lines.push('')
+    })
+    if (asArray(data.key_skills).length) { lines.push('## Key Skills'); list(data.key_skills); lines.push('') }
+    if (asArray(data.resources).length) { lines.push('## Resources'); list(data.resources) }
+  } else {
+    return JSON.stringify(data, null, 2)
+  }
+  return lines.join('\n').trim()
+}
+
+const preStyle = { fontSize: 13, color: '#c9d1d9', lineHeight: 1.8, whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0, fontFamily: 'system-ui, sans-serif' }
+const h4Style = { color: '#bc8cff', fontSize: 14, margin: '14px 0 6px', fontWeight: 600 }
+const pStyle = { fontSize: 13, color: '#c9d1d9', lineHeight: 1.75, margin: 0 }
+
+function TextList({ items, ordered }) {
+  const rows = asArray(items).map(toText).filter(Boolean)
+  if (!rows.length) return null
+  const Tag = ordered ? 'ol' : 'ul'
+  return (
+    <Tag style={{ paddingLeft: 20, margin: '4px 0', fontSize: 13, color: '#c9d1d9', lineHeight: 1.7 }}>
+      {rows.map((x, i) => <li key={i}>{x}</li>)}
+    </Tag>
+  )
+}
+
+function ReportBody({ type, content }) {
+  const data = parseReport(type, content)
+  if (data == null) return <pre style={preStyle}>{toText(content)}</pre>
+
+  if (Array.isArray(data)) return <TextList items={data} ordered />
+
+  if (type === 'survey' && isPlainObject(data)) {
+    return (
+      <div>
+        {data.introduction && <p style={pStyle}>{toText(data.introduction)}</p>}
+        {asArray(data.sections).map((sec, i) => (
+          <div key={i}>
+            <h4 style={h4Style}>{toText(sec?.heading)}</h4>
+            <p style={pStyle}>{typeof sec === 'string' ? sec : toText(sec?.content)}</p>
+          </div>
+        ))}
+        {data.conclusion && (<><h4 style={h4Style}>Conclusion</h4><p style={pStyle}>{toText(data.conclusion)}</p></>)}
+        {asArray(data.gaps).length > 0 && (<><h4 style={h4Style}>Research Gaps</h4><TextList items={data.gaps} /></>)}
+      </div>
+    )
+  }
+
+  if (type === 'roadmap' && isPlainObject(data)) {
+    return (
+      <div>
+        {data.overview && <p style={pStyle}>{toText(data.overview)}</p>}
+        {asArray(data.phases).map((ph, i) => (
+          <div key={i}>
+            <h4 style={h4Style}>
+              {toText(ph?.phase) || `Phase ${i + 1}`}
+              {ph?.duration && <span style={{ color: '#8b949e', fontWeight: 400, fontSize: 12 }}> · {toText(ph.duration)}</span>}
+            </h4>
+            <TextList items={ph?.tasks} />
+            {asArray(ph?.papers).map((pp, j) => {
+              const title = isPlainObject(pp) ? toText(pp.title) : toText(pp)
+              const url = isPlainObject(pp) ? safeHttpUrl(pp.url) : null
+              if (!title) return null
+              return (
+                <div key={j} style={{ fontSize: 12, padding: '2px 0' }}>
+                  📄 {url
+                    ? <a href={url} target="_blank" rel="noreferrer" style={{ color: '#58a6ff' }}>{title}</a>
+                    : <span style={{ color: '#8b949e' }}>{title}</span>}
+                </div>
+              )
+            })}
+          </div>
+        ))}
+        {asArray(data.key_skills).length > 0 && (<><h4 style={h4Style}>Key Skills</h4><TextList items={data.key_skills} /></>)}
+        {asArray(data.resources).length > 0 && (<><h4 style={h4Style}>Resources</h4><TextList items={data.resources} /></>)}
+      </div>
+    )
+  }
+
+  return <pre style={preStyle}>{JSON.stringify(data, null, 2)}</pre>
+}
+
+export default function History({ active = true }) {
   const [tab, setTab] = useState('reports')
   const [reports, setReports]   = useState([])
   const [searches, setSearches] = useState([])
   const [selected, setSelected] = useState(null)
   const [loading, setLoading]   = useState(true)
+  const loadReq = useRef(0)
 
+  // Every tab stays mounted, so reload whenever this tab is shown to pick up new reports
   useEffect(() => {
+    if (!active) return
+    const id = ++loadReq.current
     Promise.all([
       api.reports().catch(() => []),
       api.searches().catch(() => []),
     ]).then(([r, s]) => {
+      if (id !== loadReq.current) return
       setReports(Array.isArray(r) ? r : [])
       setSearches(Array.isArray(s) ? s : [])
       setLoading(false)
     })
-  }, [])
+  }, [active])
 
   async function openReport(id) {
     try {
@@ -37,7 +174,7 @@ export default function History() {
 
   function exportSelected() {
     if (!selected) return
-    const text = selected.content || JSON.stringify(selected, null, 2)
+    const text = selected.content ? reportText(selected.report_type, selected.content) : JSON.stringify(selected, null, 2)
     const a = document.createElement('a')
     a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' }))
     a.download = `${(selected.topic || selected.query || 'export').replace(/\W+/g, '_')}.txt`
@@ -90,7 +227,7 @@ export default function History() {
                       </div>
                       <div style={{ fontSize: 13, color: '#e6edf3', lineHeight: 1.4, marginBottom: 3 }}>{r.topic}</div>
                       <div style={{ fontSize: 11, color: '#6e7681' }}>
-                        {new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        {fmtDate(r.created_at, { month: 'short', day: 'numeric', year: 'numeric' })}
                       </div>
                     </div>
                   )
@@ -113,7 +250,7 @@ export default function History() {
                       <div style={{ fontSize: 13, color: '#e6edf3', marginBottom: 3 }}>🔍 {s.query}</div>
                       <div style={{ fontSize: 11, color: '#6e7681', display: 'flex', gap: 8 }}>
                         {s.repos?.length > 0 && <span>🔧 {s.repos.length} repos</span>}
-                        <span>{new Date(s.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                        <span>{fmtDate(s.created_at, { month: 'short', day: 'numeric' })}</span>
                       </div>
                     </div>
                   )
@@ -139,8 +276,8 @@ export default function History() {
                 </div>
                 <div style={{ fontSize: 12, color: '#6e7681', marginTop: 2 }}>
                   {selected._type === 'report'
-                    ? `${TYPE_META[selected.report_type]?.label || selected.report_type} · ${new Date(selected.created_at).toLocaleString()}`
-                    : `${new Date(selected.created_at).toLocaleString()}`
+                    ? `${TYPE_META[selected.report_type]?.label || selected.report_type} · ${fmtDateTime(selected.created_at)}`
+                    : fmtDateTime(selected.created_at)
                   }
                 </div>
               </div>
@@ -158,9 +295,7 @@ export default function History() {
               {/* Report: show content + repos + papers */}
               {selected._type === 'report' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                  <pre style={{ fontSize: 13, color: '#c9d1d9', lineHeight: 1.8, whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0, fontFamily: 'system-ui, sans-serif' }}>
-                    {selected.content}
-                  </pre>
+                  <ReportBody type={selected.report_type} content={selected.content} />
 
                   {/* Papers saved with report */}
                   {selected.papers?.length > 0 && (

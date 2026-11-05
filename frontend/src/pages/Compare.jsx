@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { api } from '../services/api'
 import Spinner from '../components/Spinner'
+import { toText, asArray } from '../utils/safe'
 
 function PaperInput({ label, value, onChange }) {
   return (
@@ -36,12 +37,26 @@ export default function Compare() {
   const [result, setResult] = useState(null)
   const [error, setError] = useState('')
 
+  const [titles, setTitles] = useState({ a: '', b: '' })
+
   async function run() {
-    if (!pa.title.trim() || !pb.title.trim()) return
+    if (!pa.title.trim() || !pb.title.trim() || loading) return
     setLoading(true); setError(''); setResult(null)
-    try { setResult(await api.compare(pa, pb)) }
+    try {
+      const data = await api.compare(pa, pb)
+      // LLM output: normalise to text so unexpected shapes cannot break rendering
+      setResult({
+        summary: toText(data?.summary),
+        winner: toText(data?.winner),
+        reason: toText(data?.reason),
+        table: asArray(data?.table).map(row => ({
+          aspect: toText(row?.aspect), paper_a: toText(row?.paper_a), paper_b: toText(row?.paper_b),
+        })),
+      })
+      setTitles({ a: pa.title, b: pb.title })
+    }
     catch (e) { setError(e.message) }
-    setLoading(false)
+    finally { setLoading(false) }
   }
 
   return (
@@ -97,10 +112,10 @@ export default function Compare() {
                       Aspect
                     </th>
                     <th style={{ textAlign: 'left', padding: '8px 12px', borderBottom: '1px solid #21262d', color: '#58a6ff', fontSize: 12 }}>
-                      {pa.title.length > 40 ? pa.title.substring(0, 38) + '…' : pa.title}
+                      {titles.a.length > 40 ? titles.a.substring(0, 38) + '…' : titles.a}
                     </th>
                     <th style={{ textAlign: 'left', padding: '8px 12px', borderBottom: '1px solid #21262d', color: '#bc8cff', fontSize: 12 }}>
-                      {pb.title.length > 40 ? pb.title.substring(0, 38) + '…' : pb.title}
+                      {titles.b.length > 40 ? titles.b.substring(0, 38) + '…' : titles.b}
                     </th>
                   </tr>
                 </thead>

@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { api } from '../services/api'
-import { useTopicContext } from '../App'
+import { useTopicField } from '../App'
 import PaperCard from '../components/PaperCard'
 import Spinner from '../components/Spinner'
+import { toText } from '../utils/safe'
 
 function Md({ text }) {
   if (!text) return null
@@ -20,29 +21,28 @@ function Md({ text }) {
 }
 
 export default function Review() {
-  const { topic: globalTopic, setTopic: setGlobalTopic } = useTopicContext()
-  const [topic, setTopic] = useState(globalTopic || '')
+  // follows the header topic until edited here
+  const [topic, setTopic, commitTopic] = useTopicField()
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
   const [error, setError] = useState('')
-
-  // Sync when global topic changes from header
-  useEffect(() => { if (globalTopic && !topic) setTopic(globalTopic) }, [globalTopic])
+  const [ranTopic, setRanTopic] = useState('')
 
   async function run() {
     if (!topic.trim() || loading) return
-    setGlobalTopic(topic)
+    const t = topic
+    commitTopic(t)
     setLoading(true); setError(''); setResult(null)
-    try { setResult(await api.review(topic)) }
+    try { setResult(await api.review(t)); setRanTopic(t) }
     catch (e) { setError(e.message) }
-    setLoading(false)
+    finally { setLoading(false) }
   }
 
   function exportMd() {
     if (!result) return
     const a = document.createElement('a')
-    a.href = URL.createObjectURL(new Blob([`# Literature Review: ${topic}\n\n${result.review}`], { type: 'text/plain' }))
-    a.download = `review_${topic.replace(/\W+/g, '_').substring(0, 30)}.md`; a.click()
+    a.href = URL.createObjectURL(new Blob([`# Literature Review: ${ranTopic}\n\n${result.review}`], { type: 'text/plain' }))
+    a.download = `review_${ranTopic.replace(/\W+/g, '_').substring(0, 30)}.md`; a.click()
   }
 
   return (
@@ -69,10 +69,10 @@ export default function Review() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 16, alignItems: 'start' }}>
           <div style={{ background: '#161b22', border: '1px solid #21262d', borderRadius: 8, padding: 20 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h3 style={{ fontSize: 15 }}>Review: {topic}</h3>
+              <h3 style={{ fontSize: 15 }}>Review: {ranTopic}</h3>
               <button onClick={exportMd} style={{ background: 'none', border: '1px solid #58a6ff', color: '#58a6ff', borderRadius: 6, padding: '5px 12px', fontSize: 12, cursor: 'pointer' }}>⬇ Export .md</button>
             </div>
-            <Md text={result.review} />
+            <Md text={typeof result.review === 'string' ? result.review : toText(result.review)} />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: '#8b949e' }}>Papers Used ({result.papers?.length || 0})</div>

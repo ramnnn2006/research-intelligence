@@ -1,14 +1,16 @@
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import { api } from '../services/api'
-import { useTopicContext } from '../App'
+import { useTopicField } from '../App'
 import PaperCard from '../components/PaperCard'
 import Graph from '../components/Graph'
 import Spinner from '../components/Spinner'
 import RepoList from '../components/RepoList'
 
 export default function Discover() {
-  const { topic: globalTopic, setTopic: setGlobalTopic } = useTopicContext()
-  const [query, setQuery]       = useState(globalTopic || '')
+  // follows the header topic until edited here
+  const [query, setQuery, commitQuery] = useTopicField()
+  const [searchedQuery, setSearchedQuery] = useState('')   // query behind the current result
+  const subgraphReq = useRef(0)                            // latest subgraph request id
   const [arxiv, setArxiv]       = useState(true)
   const [scholar, setScholar]   = useState(true)
   const [loading, setLoading]   = useState(false)
@@ -24,18 +26,24 @@ export default function Discover() {
   const [exportFormat, setExportFormat] = useState('json')
 
   async function loadSubgraph(d) {
+    const id = ++subgraphReq.current
     setDepth(d); setGraphLoading(true)
     try {
-      const r = await fetch(`/api/graph/export/json?scope=topic&topic=${encodeURIComponent(query)}&depth=${d}`)
+      const r = await fetch(`/api/graph/export/json?scope=topic&topic=${encodeURIComponent(searchedQuery)}&depth=${d}`)
       if (!r.ok) throw new Error(`HTTP ${r.status}`)
-      setSubgraph(await r.json())
-    } catch (e) { setError(`Could not load ${d}-hop subgraph: ${e.message}`) }
-    setGraphLoading(false)
+      const data = await r.json()
+      if (id === subgraphReq.current) setSubgraph(data)
+    } catch (e) {
+      if (id === subgraphReq.current) setError(`Could not load ${d}-hop subgraph: ${e.message}`)
+    } finally {
+      // a newer slider move owns the loading flag
+      if (id === subgraphReq.current) setGraphLoading(false)
+    }
   }
 
   function downloadExport() {
     const [fmt, table] = exportFormat.split(':')
-    let url = `/api/graph/export/${fmt}?scope=${exportScope}&topic=${encodeURIComponent(query)}&depth=${depth}`
+    let url = `/api/graph/export/${fmt}?scope=${exportScope}&topic=${encodeURIComponent(searchedQuery)}&depth=${depth}`
     if (table) url += `&table=${table}`
     const a = document.createElement('a')
     a.href = url
@@ -45,18 +53,22 @@ export default function Discover() {
 
   async function search() {
     if (!query.trim() || loading) return
-    setGlobalTopic(query)
+    const q = query
+    commitQuery(q)
     setLoading(true); setError('')
     try {
       const sources = []
       if (arxiv)   sources.push('arxiv')
       if (scholar) sources.push('semantic_scholar')
       // GitHub is always fetched server-side regardless
-      setResult(await api.search(query, sources, 12))
-      setSubgraph(null)
+      setResult(await api.search(q, sources, 12))
+      setSearchedQuery(q)
+      // new result: drop any subgraph (and in-flight subgraph request) and reset depth
+      subgraphReq.current++
+      setSubgraph(null); setGraphLoading(false); setDepth(1)
       setActiveTab('papers')
     } catch (e) { setError(e.message) }
-    setLoading(false)
+    finally { setLoading(false) }
   }
 
   return (
@@ -124,7 +136,7 @@ export default function Discover() {
               {/* Papers tab */}
               {activeTab === 'papers' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {result.papers?.length === 0
+                  {!result.papers?.length
                     ? <div style={{ color: '#6e7681', fontSize: 13, padding: 20, textAlign: 'center' }}>No papers found. Try different keywords.</div>
                     : result.papers.map((p, i) => <PaperCard key={i} paper={p} />)
                   }
@@ -141,10 +153,10 @@ export default function Discover() {
             {showGraph && result.graph && (
               <div style={{ background: '#161b22', border: '1px solid #21262d', borderRadius: 8, padding: 16, position: 'sticky', top: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                  <h3 style={{ fontSize: 13, fontWeight: 600 }}>{subgraph ? `Neo4j Subgraph (${subgraph.nodes.length} nodes)` : 'Knowledge Graph'}</h3>
+                  <h3 style={{ fontSize: 13, fontWeight: 600 }}>{subgraph ? `Neo4j Subgraph (${subgraph.nodes?.length || 0} nodes)` : 'Knowledge Graph'}</h3>
                   {graphLoading && <Spinner />}
                   {subgraph && (
-                    <button onClick={() => setSubgraph(null)}
+                    <button onClick={() => { subgraphReq.current++; setSubgraph(null); setGraphLoading(false); setDepth(1) }}
                       style={{ background: 'none', border: 'none', color: '#6e7681', fontSize: 11, cursor: 'pointer', padding: 0 }}>
                       reset
                     </button>
@@ -169,7 +181,7 @@ export default function Discover() {
             style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 8, padding: 20, width: 340, display: 'flex', flexDirection: 'column', gap: 12, fontSize: 13 }}>
             <h3 style={{ fontSize: 15 }}>Export Subgraph</h3>
             <p style={{ color: '#8b949e', fontSize: 12 }}>
-              Seeds: papers found for "{query}" · {depth}-hop traversal
+              Seeds: papers found for "{searchedQuery}" · {depth}-hop traversal
             </p>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4, color: '#8b949e' }}>
               What to export
