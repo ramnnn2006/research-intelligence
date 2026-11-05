@@ -1,3 +1,4 @@
+import asyncio
 import csv, io, json
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response
@@ -7,10 +8,12 @@ from typing import Optional
 from app.mcp.arxiv import ArxivMCP
 from app.mcp.semantic_scholar import SemanticScholarMCP
 from app.mcp.github import GitHubMCP
+from app.mcp.huggingface import HuggingFaceMCP
 from app.services.graph import build_knowledge_graph, build_citation_graph, fetch_neo4j_subgraph
 from app.rag.vectorstore import add_papers, query as rag_query, count as rag_count
 from app.agents import research_agent as agent
 from app.agents.research_agent import LLMError
+from app.db.knowledge_graph import save_hf_artifacts, get_topic_graph
 from app.db.database import (
     save_report, save_search, get_reports, get_searches,
     get_report_by_id, get_neo4j_stats
@@ -21,6 +24,7 @@ router = APIRouter(prefix="/api")
 arxiv   = ArxivMCP()
 scholar = SemanticScholarMCP()
 github  = GitHubMCP()
+hf      = HuggingFaceMCP()
 
 
 # ── Request models ────────────────────────────────────────────────────────
@@ -84,22 +88,33 @@ async def _topic_papers(topic: str, n_arxiv: int, n_scholar: int, top_up: bool =
 # ── Search ────────────────────────────────────────────────────────────────
 @router.post("/search")
 async def search(req: SearchReq):
-    arxiv_res, scholar_res, gh_res = [], [], []
-    if "arxiv" in req.sources:
-        arxiv_res = await arxiv.search(req.query, req.max_results)
-    if "semantic_scholar" in req.sources:
-        scholar_res = await scholar.search(req.query, req.max_results)
-    # Always fetch GitHub repos regardless of sources toggle
-    gh_res = await github.search(req.query, max_results=8)
+    async def _none():
+        return []
+
+    # the four sources are independent, so query them concurrently
+    arxiv_res, scholar_res, gh_res, hf_res = await asyncio.gather(
+        arxiv.search(req.query, req.max_results) if "arxiv" in req.sources else _none(),
+        scholar.search(req.query, req.max_results) if "semantic_scholar" in req.sources else _none(),
+        github.search(req.query, max_results=8),  # always fetched, regardless of the sources toggle
+        hf.search_all(req.query, max_models=6, max_datasets=6),
+    )
+    models = hf_res.get("models", []) if isinstance(hf_res, dict) else []
+    datasets = hf_res.get("datasets", []) if isinstance(hf_res, dict) else []
 
     papers = _merge([arxiv_res, scholar_res])
     await run_in_threadpool(add_papers, papers)
     await run_in_threadpool(save_search, req.query, papers, gh_res)
+    await run_in_threadpool(save_hf_artifacts, req.query, models, datasets)
 
-    graph = await run_in_threadpool(build_knowledge_graph, req.query, papers, gh_res)
+    # read the topic subgraph back from Neo4j; build it in memory when Neo4j is offline
+    graph = await run_in_threadpool(get_topic_graph, req.query)
+    graph_source = "neo4j" if graph and graph.get("nodes") else "networkx"
+    if graph_source == "networkx":
+        graph = await run_in_threadpool(build_knowledge_graph, req.query, papers, gh_res, models, datasets)
     return {
-        "papers": papers, "repos": gh_res,
-        "graph": graph, "total": len(papers), "rag_count": rag_count()
+        "papers": papers, "repos": gh_res, "models": models, "datasets": datasets,
+        "graph": graph, "graph_source": graph_source,
+        "total": len(papers), "rag_count": rag_count()
     }
 
 
@@ -237,6 +252,24 @@ def nosql_status():
             **get_mongo_stats(),
         },
     }
+
+
+@router.get("/neo4j/graph/{topic:path}")
+def neo4j_topic_graph(topic: str):
+    graph = get_topic_graph(topic)
+    if not graph or not graph.get("nodes"):
+        raise HTTPException(404, f"No graph found in Neo4j for topic: {topic}")
+    return graph
+
+
+# ── Hugging Face Hub connector ────────────────────────────────────────────
+@router.get("/hf/models")
+async def hf_models(query: str = Query(..., min_length=1), limit: int = Query(default=8, ge=1, le=50)):
+    return await hf.search_models(query, limit)
+
+@router.get("/hf/datasets")
+async def hf_datasets(query: str = Query(..., min_length=1), limit: int = Query(default=8, ge=1, le=50)):
+    return await hf.search_datasets(query, limit)
 
 
 # ── Neo4j Explicit CRUD Endpoints ──────────────────────────────────────────

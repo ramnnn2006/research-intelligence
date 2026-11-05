@@ -27,7 +27,8 @@ except ImportError:  # the client module already warns when the driver is missin
     Date = DateTime = Time = None
 
 # label -> property that uniquely identifies a node (matches the schema constraints)
-NODE_KEYS = {"Paper": "id", "Author": "name", "Repository": "name", "Topic": "name", "Search": "id", "Report": "id"}
+NODE_KEYS = {"Paper": "id", "Author": "name", "Repository": "name", "Topic": "name", "Search": "id", "Report": "id",
+             "Model": "id", "Dataset": "id"}
 EXPECTED_CONSTRAINTS = ["paper_id_uniq", "author_name_uniq", "repo_name_uniq",
                         "topic_name_uniq", "search_id_uniq", "report_id_uniq"]
 BATCH = 500

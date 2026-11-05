@@ -95,5 +95,70 @@ class TestMongoDocumentStore(unittest.TestCase):
             self.assertGreater(neo["stats"]["papers"], 0)
 
 
+HF_TOPIC = "ResearchIQ Test HF Topic"
+HF_PAPER = {"id": "http://arxiv.org/abs/1001.99995v1", "title": "ResearchIQ Test HF Paper",
+            "authors": ["ResearchIQ Test HF Author"], "year": "2024", "source": "arxiv"}
+HF_MODEL = {"id": "researchiq-test/hf-model", "name": "hf-model", "pipeline_tag": "text-classification",
+            "downloads": 10, "likes": 2}
+HF_DATASET = {"id": "researchiq-test/hf-dataset", "name": "hf-dataset", "downloads": 5}
+
+
+class TestHuggingFaceKnowledgeGraph(unittest.TestCase):
+    """POST /api/search with the external connectors stubbed, so no network is needed."""
+
+    @classmethod
+    def setUpClass(cls):
+        init_neo4j_schema()
+        from app.api import routes
+        cls.routes = routes
+
+    @classmethod
+    def tearDownClass(cls):
+        client = get_neo4j_client()
+        if client.connect():
+            client.execute_write("MATCH (n) WHERE n.id IN $ids OR n.name IN $names DETACH DELETE n",
+                                 {"ids": [HF_MODEL["id"], HF_DATASET["id"], "http://arxiv.org/abs/1001.99995"],
+                                  "names": [HF_TOPIC, "ResearchIQ Test HF Author"]})
+            client.execute_write("MATCH (s:Search {query: $q}) DETACH DELETE s", {"q": HF_TOPIC})
+        db = mongo_client._db()
+        if db is not None:
+            db.searches.delete_many({"query": HF_TOPIC})
+            db.papers.delete_many({"_id": "http://arxiv.org/abs/1001.99995"})
+
+    def _search(self):
+        r = self.routes
+        with mock.patch.object(r.arxiv, "search", mock.AsyncMock(return_value=[HF_PAPER])), \
+             mock.patch.object(r.scholar, "search", mock.AsyncMock(return_value=[])), \
+             mock.patch.object(r.github, "search", mock.AsyncMock(return_value=[])), \
+             mock.patch.object(r.hf, "search_all", mock.AsyncMock(return_value={"models": [HF_MODEL], "datasets": [HF_DATASET]})), \
+             TestClient(app) as api:
+            return api.post("/api/search", json={"query": HF_TOPIC, "max_results": 3})
+
+    def test_01_search_returns_and_stores_models_and_datasets(self):
+        res = self._search()
+        self.assertEqual(res.status_code, 200)
+        body = res.json()
+        self.assertEqual([m["id"] for m in body["models"]], [HF_MODEL["id"]])
+        self.assertEqual([d["id"] for d in body["datasets"]], [HF_DATASET["id"]])
+        self.assertEqual(body["graph_source"], "neo4j")
+        types = {n["id"]: n["type"] for n in body["graph"]["nodes"]}
+        self.assertEqual(types.get(HF_MODEL["id"]), "model")
+        self.assertEqual(types.get(HF_DATASET["id"]), "dataset")
+        relations = {l["relation"] for l in body["graph"]["links"]}
+        self.assertTrue({"model", "dataset", "authored"} <= relations)
+        self.assertEqual(body["graph"]["links"], body["graph"]["edges"])
+
+    def test_02_topic_graph_endpoint_and_no_duplicate_nodes(self):
+        self._search()  # a second identical search must not duplicate nodes
+        client = get_neo4j_client()
+        counts = client.execute_read(
+            "MATCH (t:Topic {name: $t}) RETURN COUNT { (t)-[:HAS_MODEL]->() } AS models, "
+            "COUNT { (t)-[:USES_DATASET]->() } AS datasets, COUNT { (t)<-[:BELONGS_TO]-() } AS papers", {"t": HF_TOPIC})
+        self.assertEqual(counts, [{"models": 1, "datasets": 1, "papers": 1}])
+        with TestClient(app) as api:
+            self.assertEqual(api.get("/api/neo4j/graph/" + HF_TOPIC).status_code, 200)
+            self.assertEqual(api.get("/api/neo4j/graph/ResearchIQ Test No Such Topic").status_code, 404)
+
+
 if __name__ == "__main__":
     unittest.main()
