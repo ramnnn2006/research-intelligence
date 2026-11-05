@@ -160,5 +160,60 @@ class TestHuggingFaceKnowledgeGraph(unittest.TestCase):
             self.assertEqual(api.get("/api/neo4j/graph/ResearchIQ Test No Such Topic").status_code, 404)
 
 
+CIT_ROOT = {"id": "http://arxiv.org/abs/1001.99994v3", "title": "ResearchIQ Test Citation Root",
+            "year": "2020", "citations": 50, "authors": ["ResearchIQ Test Cite Author"]}
+CIT_CITING = {"doi": "10.9999/RIQ-TEST-CITING", "title": "ResearchIQ Test Citing Paper", "year": "2022", "citations": 3}
+CIT_REF = {"url": "https://arxiv.org/abs/1001.99993", "title": "ResearchIQ Test Referenced Paper", "year": "2018", "citations": 9}
+CIT_IDS = ["http://arxiv.org/abs/1001.99994", "https://doi.org/10.9999/riq-test-citing", "http://arxiv.org/abs/1001.99993"]
+
+
+class TestCitationNetwork(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        init_neo4j_schema()
+        from app.db import knowledge_graph
+        cls.kg = knowledge_graph
+        cls.saved = knowledge_graph.save_citation_network(CIT_ROOT, [CIT_CITING], [CIT_REF])
+
+    @classmethod
+    def tearDownClass(cls):
+        client = get_neo4j_client()
+        if client.connect():
+            client.execute_write("MATCH (p:Paper) WHERE p.id IN $ids DETACH DELETE p", {"ids": CIT_IDS})
+            client.execute_write("MATCH (a:Author {name: 'ResearchIQ Test Cite Author'}) DETACH DELETE a")
+
+    def test_01_saved_with_canonical_ids_and_direction(self):
+        self.assertTrue(self.saved.get("saved"))
+        self.assertEqual(self.saved.get("root_id"), CIT_IDS[0])
+        rows = get_neo4j_client().execute_read(
+            "MATCH (a:Paper)-[:CITES]->(b:Paper) WHERE a.id IN $ids AND b.id IN $ids RETURN a.id AS src, b.id AS dst",
+            {"ids": CIT_IDS})
+        self.assertEqual(sorted((r["src"], r["dst"]) for r in rows),
+                         sorted([(CIT_IDS[1], CIT_IDS[0]), (CIT_IDS[0], CIT_IDS[2])]))
+
+    def test_02_resave_never_resets_citation_count(self):
+        self.kg.save_citation_network(dict(CIT_ROOT, citations=0), [CIT_CITING], [])
+        rows = get_neo4j_client().execute_read("MATCH (p:Paper {id: $id}) RETURN p.citations AS c", {"id": CIT_IDS[0]})
+        self.assertEqual(rows, [{"c": 50}])
+
+    def test_03_empty_network_writes_nothing(self):
+        res = self.kg.save_citation_network({"title": "ResearchIQ Test Lonely Paper"}, [], [])
+        self.assertFalse(res.get("saved"))
+        rows = get_neo4j_client().execute_read("MATCH (p:Paper {title: 'ResearchIQ Test Lonely Paper'}) RETURN count(p) AS n")
+        self.assertEqual(rows, [{"n": 0}])
+
+    def test_04_multihop_route(self):
+        with TestClient(app) as api:
+            res = api.post("/api/neo4j/citations/multihop", json={"title": "researchiq test citation root", "hops": 2})
+            self.assertEqual(res.status_code, 200)
+            body = res.json()
+            self.assertEqual(body["root_id"], CIT_IDS[0])
+            self.assertTrue(set(CIT_IDS) <= {n["id"] for n in body["nodes"]})
+            self.assertEqual(body["links"], body["edges"])
+            missing = api.post("/api/neo4j/citations/multihop", json={"title": "ResearchIQ Test No Such Paper", "hops": 2})
+            self.assertEqual(missing.status_code, 404)
+            self.assertEqual(api.post("/api/neo4j/citations/multihop", json={"title": "x", "hops": 9}).status_code, 422)
+
+
 if __name__ == "__main__":
     unittest.main()

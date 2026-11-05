@@ -2,18 +2,19 @@ import asyncio
 import csv, io, json
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 from typing import Optional
 from app.mcp.arxiv import ArxivMCP
 from app.mcp.semantic_scholar import SemanticScholarMCP
 from app.mcp.github import GitHubMCP
 from app.mcp.huggingface import HuggingFaceMCP
-from app.services.graph import build_knowledge_graph, build_citation_graph, fetch_neo4j_subgraph
+from app.services.graph import build_knowledge_graph, fetch_neo4j_subgraph
 from app.rag.vectorstore import add_papers, query as rag_query, count as rag_count
 from app.agents import research_agent as agent
 from app.agents.research_agent import LLMError
-from app.db.knowledge_graph import save_hf_artifacts, get_topic_graph
+from app.db.knowledge_graph import save_hf_artifacts, get_topic_graph, get_multi_hop_citations
+from app.services.academic import get_paper_citations, search_author_portfolio
 from app.db.database import (
     save_report, save_search, get_reports, get_searches,
     get_report_by_id, get_neo4j_stats
@@ -46,6 +47,15 @@ class ChatReq(BaseModel):
 
 class CitationReq(BaseModel):
     title: str
+    limit: int = Field(default=15, ge=1, le=50)
+
+class AuthorSearchReq(BaseModel):
+    name: str
+    max_results: int = Field(default=15, ge=1, le=50)
+
+class MultiHopReq(BaseModel):
+    title: str
+    hops: int = Field(default=2, ge=1, le=3)
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────
@@ -121,9 +131,25 @@ async def search(req: SearchReq):
 # ── Citation Network ──────────────────────────────────────────────────────
 @router.post("/citations")
 async def get_citations(req: CitationReq):
-    data = await scholar.get_citations(req.title)
-    graph = await run_in_threadpool(build_citation_graph, req.title, data)
-    return {"data": data, "graph": graph}
+    """Citing and referenced papers (OpenAlex, then Semantic Scholar, then Neo4j), stored as :CITES edges."""
+    return await get_paper_citations(req.title, req.limit)
+
+@router.post("/neo4j/citations/multihop")
+def neo4j_multihop(req: MultiHopReq):
+    graph = get_multi_hop_citations(req.title, req.hops)
+    if not graph:
+        raise HTTPException(404, "No citation paths found in Neo4j for this paper")
+    return graph
+
+
+# ── Author Portfolio ──────────────────────────────────────────────────────
+@router.post("/author/search")
+async def search_author(req: AuthorSearchReq):
+    return await search_author_portfolio(req.name, req.max_results)
+
+@router.get("/author")
+async def get_author(name: str = Query(..., min_length=1), limit: int = Query(default=15, ge=1, le=50)):
+    return await search_author_portfolio(name, limit)
 
 
 # ── Literature Review ─────────────────────────────────────────────────────
