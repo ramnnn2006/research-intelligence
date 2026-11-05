@@ -1,3 +1,4 @@
+import atexit
 import os
 import time
 import logging
@@ -215,6 +216,8 @@ class Neo4jClient:
 
 # Module helper instances
 _client = Neo4jClient()
+# close the pool before interpreter teardown; otherwise scripts print driver tracebacks on exit
+atexit.register(lambda: _client.close())
 
 def get_neo4j_client() -> Neo4jClient:
     return _client

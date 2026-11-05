@@ -287,5 +287,53 @@ class TestPdfRag(unittest.TestCase):
                 self.assertIn("GROQ_API_KEY", res.json()["detail"])
 
 
+class TestGraphAnalytics(unittest.TestCase):
+    """NetworkX centrality over the snapshot loaded from scripts/export_cypher.cql."""
+
+    @classmethod
+    def setUpClass(cls):
+        init_neo4j_schema()
+        cls.client = get_neo4j_client()
+        if not cls.client.connect():
+            raise unittest.SkipTest("Neo4j is not reachable")
+        rows = cls.client.execute_read(
+            "MATCH (t:Topic)<-[:BELONGS_TO]-(:Paper)-[:CITES]-(:Paper) RETURN t.name AS name, count(*) AS n ORDER BY n DESC LIMIT 1")
+        if not rows:
+            raise unittest.SkipTest("No topic with citation edges; load scripts/export_cypher.cql first")
+        cls.topic = rows[0]["name"]
+
+    def test_01_global_scores_are_differentiated(self):
+        with TestClient(app) as api:
+            body = api.get("/api/graph/analytics", params={"metric": "pagerank", "limit": 10}).json()
+        self.assertTrue(body["success"], body.get("message"))
+        papers = body["influential_papers"]
+        self.assertGreater(len(papers), 1)
+        for key in ("pagerank", "betweenness", "degree_centrality", "authority_score", "hub_score", "community"):
+            self.assertIn(key, papers[0])
+        self.assertGreater(len({p["pagerank"] for p in papers}), 1)  # not a flat ranking
+        self.assertEqual(body["graph"]["links"], body["graph"]["edges"])
+
+    def test_02_topic_scope_is_case_insensitive_and_unknown_topic_fails_cleanly(self):
+        with TestClient(app) as api:
+            body = api.get("/api/graph/analytics", params={"topic": self.topic.upper(), "metric": "betweenness"}).json()
+            self.assertTrue(body["success"], body.get("message"))
+            self.assertTrue(any(p.get("in_topic") for p in body["influential_papers"]))
+            missing = api.get("/api/graph/analytics", params={"topic": "ResearchIQ Test No Such Topic"}).json()
+            self.assertFalse(missing["success"])
+            self.assertTrue(missing["message"])
+            self.assertEqual(api.get("/api/graph/analytics", params={"metric": "nonsense"}).status_code, 422)
+
+    def test_03_sync_writes_nx_properties_without_touching_cypher_pagerank(self):
+        before = self.client.execute_read("MATCH (p:Paper) RETURN collect([p.id, p.pagerank]) AS pr")[0]["pr"]
+        with TestClient(app) as api:
+            res = api.post("/api/graph/sync_metrics").json()
+        self.assertTrue(res["success"], res)
+        self.assertGreater(res["nodes_updated"], 0)
+        after = self.client.execute_read("MATCH (p:Paper) RETURN collect([p.id, p.pagerank]) AS pr")[0]["pr"]
+        self.assertEqual(sorted(map(tuple, before), key=str), sorted(map(tuple, after), key=str))
+        n = self.client.execute_read("MATCH (p:Paper) WHERE p.nx_pagerank IS NOT NULL RETURN count(p) AS n")[0]["n"]
+        self.assertEqual(n, res["nodes_updated"])
+
+
 if __name__ == "__main__":
     unittest.main()

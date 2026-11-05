@@ -361,6 +361,22 @@ def clear_pdfs():
     return {"success": True, "stats": pdf_store.get_stats()}
 
 
+# ── NetworkX centrality analytics over the Neo4j citation graph ───────────
+@router.get("/graph/analytics")
+def graph_analytics(topic: Optional[str] = Query(default=None),
+                    metric: str = Query(default="pagerank", pattern="^(pagerank|betweenness|degree|authority)$"),
+                    limit: int = Query(default=30, ge=1, le=200)):
+    """PageRank, betweenness, degree, HITS and communities. Runs in the threadpool (plain def route)."""
+    from app.analytics.graph_analytics import compute_graph_analytics
+    return compute_graph_analytics(topic=topic or None, metric=metric, limit=limit)
+
+@router.post("/graph/sync_metrics")
+def graph_sync_metrics():
+    """Store the NetworkX scores on Paper nodes as nx_pagerank and nx_betweenness."""
+    from app.analytics.graph_analytics import write_metrics_to_neo4j
+    return write_metrics_to_neo4j()
+
+
 # ── Neo4j Explicit CRUD Endpoints ──────────────────────────────────────────
 class CreatePaperReq(BaseModel):
     id: Optional[str] = None
