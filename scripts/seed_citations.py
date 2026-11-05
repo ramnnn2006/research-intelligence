@@ -3,7 +3,7 @@ import os
 import re
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "backend")))
-from neo4j import GraphDatabase
+from app.db.neo4j_client import get_neo4j_client
 from app.db.queries import compute_citation_pagerank, get_2hop_citations, get_indegree_centrality
 
 CITATIONS = [
@@ -126,13 +126,17 @@ CITATION_COUNTS = {
 }
 
 def main():
-    driver = GraphDatabase.driver("bolt://127.0.0.1:7687", auth=("neo4j", "research123"))
-    with driver.session() as session:
-        papers = session.run("MATCH (p:Paper) RETURN p.id AS id, p.title AS title").data()
-        
+    # NEO4J_URI / NEO4J_USER / NEO4J_PASSWORD come from the environment, like the API
+    client = get_neo4j_client()
+    if not client.connect():
+        print(f"Error: cannot connect to Neo4j at {client.uri}. Is the server running?")
+        sys.exit(2)
+    papers = client.execute_read(
+        "MATCH (p:Paper) WHERE p.title IS NOT NULL RETURN p.id AS id, p.title AS title ORDER BY p.id")
+
     def find_paper(kw):
         for p in papers:
-            if kw.lower() in p["title"].lower():
+            if kw.lower() in (p["title"] or "").lower():
                 return p
         raise ValueError(f"Paper matching '{kw}' not found!")
 
@@ -143,28 +147,27 @@ def main():
     cql_lines.append("// ============================================================================\n")
 
     created_count = 0
-    with driver.session() as session:
-        # 1. Update citation counts
-        for kw, cnt in CITATION_COUNTS.items():
-            try:
-                p = find_paper(kw)
-                session.run("MATCH (p:Paper {id: $id}) SET p.citations = $cnt", {"id": p["id"], "cnt": cnt})
-            except Exception as e:
-                print(f"Warning updating citations for {kw}: {e}")
+    # 1. Update citation counts
+    for kw, cnt in CITATION_COUNTS.items():
+        try:
+            p = find_paper(kw)
+            client.execute_write("MATCH (p:Paper {id: $id}) SET p.citations = $cnt", {"id": p["id"], "cnt": cnt})
+        except Exception as e:
+            print(f"Warning updating citations for {kw}: {e}")
 
-        # 2. Create :CITES edges
-        for src_kw, dst_kw in CITATIONS:
-            try:
-                p_src = find_paper(src_kw)
-                p_dst = find_paper(dst_kw)
-                session.run("""
-                    MATCH (s:Paper {id: $src_id}), (d:Paper {id: $dst_id})
-                    MERGE (s)-[:CITES]->(d)
-                """, {"src_id": p_src["id"], "dst_id": p_dst["id"]})
-                cql_lines.append(f"MATCH (p1:Paper {{id: '{p_src['id']}'}}), (p2:Paper {{id: '{p_dst['id']}'}}) MERGE (p1)-[:CITES]->(p2);")
-                created_count += 1
-            except Exception as e:
-                print(f"Error connecting {src_kw} -> {dst_kw}: {e}")
+    # 2. Create :CITES edges
+    for src_kw, dst_kw in CITATIONS:
+        try:
+            p_src = find_paper(src_kw)
+            p_dst = find_paper(dst_kw)
+            client.execute_write("""
+                MATCH (s:Paper {id: $src_id}), (d:Paper {id: $dst_id})
+                MERGE (s)-[:CITES]->(d)
+            """, {"src_id": p_src["id"], "dst_id": p_dst["id"]})
+            cql_lines.append(f"MATCH (p1:Paper {{id: '{p_src['id']}'}}), (p2:Paper {{id: '{p_dst['id']}'}}) MERGE (p1)-[:CITES]->(p2);")
+            created_count += 1
+        except Exception as e:
+            print(f"Error connecting {src_kw} -> {dst_kw}: {e}")
 
     print(f"Successfully seeded {created_count} [:CITES] relationships into live Neo4j database!")
 
@@ -198,14 +201,21 @@ def main():
     print(f"Iterations: {pr_res.get('iterations')}, Converged delta: {pr_res.get('converged_delta')}")
     print("\nTop 8 Landmark Papers Ranked by PageRank:")
     for r in pr_res.get("results", [])[:8]:
-        print(f"  * {r['title'][:60]} | PageRank: {r['pagerank']:.6f} | In-Degree Citations: {r['cited_by']}")
+        print(f"  * {(r['title'] or '')[:60]} | PageRank: {r['pagerank']:.6f} | In-Degree Citations: {r['cited_by']}")
 
     # 5. Verify 2-hop traversal
-    sample_seed = find_paper("Energy-Gated Attention")["id"]
+    try:
+        sample_seed = find_paper("Energy-Gated Attention")["id"]
+    except ValueError as e:
+        print(f"\nSkipping 2-hop check: {e}")
+        return
     two_hop = get_2hop_citations(sample_seed, limit=5)
     print(f"\n2-Hop Citation Path Discovery from '{sample_seed}':")
     for row in two_hop:
-        print(f"  * Chain: {' -> '.join(row['citation_chain'])} (Hops: {row['hops']}, Foundational cites: {row['citations']})")
+        print(f"  * Chain: {' -> '.join(t or '?' for t in row['citation_chain'])} (Hops: {row['hops']}, Foundational cites: {row['citations']})")
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    finally:
+        get_neo4j_client().close()

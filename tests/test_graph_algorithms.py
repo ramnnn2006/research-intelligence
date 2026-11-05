@@ -1,8 +1,9 @@
 """
 Tests for the Review 3 additions: PageRank, Louvain communities, subgraph
 export endpoints and the database health check.
-Needs a running Neo4j (docker compose up -d). The fixture graph uses ids
-prefixed with test_algo_ and is removed again in tearDownClass.
+Needs a running Neo4j (docker compose up -d). The schema is created in
+setUpClass, so a fresh database works. The fixture graph uses ids prefixed
+with test_algo_ and is removed again in tearDownClass.
 """
 import sys
 import os
@@ -13,8 +14,8 @@ import unittest
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "backend")))
 
 from fastapi.testclient import TestClient
-from app.main import app
-from app.db.neo4j_client import get_neo4j_client
+from app.main import app  # first: loads .env before the Neo4j client reads its settings
+from app.db.neo4j_client import get_neo4j_client, init_neo4j_schema
 from app.db.health import get_db_health, advise_indexes
 from app.db.queries import compute_citation_pagerank, detect_paper_communities, get_community_modularity
 
@@ -47,18 +48,26 @@ class TestGraphAlgorithms(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.client = get_neo4j_client()
+        if not cls.client.connect():
+            raise RuntimeError(f"Neo4j is not reachable at {cls.client.uri}; start it with docker compose up -d")
+        init_neo4j_schema()
         cls.client.execute_write(FIXTURE)
-        cls.api = TestClient(app)
+        # entering the context runs the app lifespan, like a real server start
+        cls._api_cm = TestClient(app)
+        cls.api = cls._api_cm.__enter__()
 
     @classmethod
     def tearDownClass(cls):
-        cls.client.execute_write("""
-        MATCH (n)
-        WHERE (n:Paper AND n.id STARTS WITH 'test_algo_')
-           OR (n:Author AND n.name STARTS WITH 'Algo Fixture')
-           OR (n:Topic AND n.name = 'Algo Fixture Topic')
-        DETACH DELETE n
-        """)
+        try:
+            cls.client.execute_write("""
+            MATCH (n)
+            WHERE (n:Paper AND n.id STARTS WITH 'test_algo_')
+               OR (n:Author AND n.name STARTS WITH 'Algo Fixture')
+               OR (n:Topic AND n.name = 'Algo Fixture Topic')
+            DETACH DELETE n
+            """)
+        finally:
+            cls._api_cm.__exit__(None, None, None)
 
     def _fixture_values(self, prop):
         rows = self.client.execute_read(

@@ -1,4 +1,5 @@
 import os
+import time
 import logging
 import threading
 from typing import Any, Dict, List, Optional
@@ -13,6 +14,13 @@ try:
 except ImportError:
     NEO4J_AVAILABLE = False
     logger.warning("neo4j python package not installed. Using in-memory graph fallback.")
+
+# After a failed connect, wait this long before trying again so an offline
+# database answers "not connected" at once instead of stalling every call.
+RECONNECT_BACKOFF_SECONDS = float(os.getenv("NEO4J_RECONNECT_BACKOFF", "15"))
+# Managed transactions retry ServiceUnavailable; the driver default is 30 s per call.
+MAX_TRANSACTION_RETRY_SECONDS = float(os.getenv("NEO4J_MAX_RETRY_TIME", "5"))
+CONNECTION_TIMEOUT_SECONDS = float(os.getenv("NEO4J_CONNECTION_TIMEOUT", "5"))
 
 
 class Neo4jClient:
@@ -39,6 +47,8 @@ class Neo4jClient:
         self.database: str = os.getenv("NEO4J_DATABASE", "neo4j")
         self._driver: Optional[Any] = None
         self._is_connected: bool = False
+        self._last_failure: float = 0.0
+        self._connect_lock = threading.Lock()
         self._fallback_store: Dict[str, Any] = {
             "papers": {},
             "authors": {},
@@ -50,31 +60,64 @@ class Neo4jClient:
         }
         self._initialized = True
 
+    def _close_driver(self):
+        if self._driver is not None:
+            try:
+                self._driver.close()
+            except Exception as e:
+                logger.debug("Ignoring error while closing stale Neo4j driver: %s", e)
+        self._driver = None
+        self._is_connected = False
+
+    def _mark_offline(self, reason: Any):
+        """Called when a query finds the server gone; the next call goes through connect()."""
+        if self._is_connected:
+            logger.warning("Lost connection to Neo4j at %s: %s", self.uri, reason)
+        self._is_connected = False
+        self._last_failure = time.monotonic()
+
     def connect(self) -> bool:
-        """Establish connection to Neo4j database."""
+        """
+        Establish connection to Neo4j database. Returns True only when the server
+        answered a connectivity check. Failed attempts are throttled for
+        RECONNECT_BACKOFF_SECONDS.
+        """
         if not NEO4J_AVAILABLE:
             self._is_connected = False
             return False
 
-        if self._driver is not None and self._is_connected:
+        if self.is_connected():
             return True
 
-        try:
-            self._driver = GraphDatabase.driver(
-                self.uri,
-                auth=(self.user, self.password),
-                max_connection_lifetime=30 * 60,
-                max_connection_pool_size=50,
-                connection_acquisition_timeout=5.0
-            )
-            self.verify_connectivity()
+        with self._connect_lock:
+            if self.is_connected():
+                return True
+            if self._last_failure and time.monotonic() - self._last_failure < RECONNECT_BACKOFF_SECONDS:
+                return False
+
+            # never leak the pool of a previous, failed driver
+            self._close_driver()
+            try:
+                self._driver = GraphDatabase.driver(
+                    self.uri,
+                    auth=(self.user, self.password),
+                    max_connection_lifetime=30 * 60,
+                    max_connection_pool_size=50,
+                    connection_acquisition_timeout=CONNECTION_TIMEOUT_SECONDS,
+                    connection_timeout=CONNECTION_TIMEOUT_SECONDS,
+                    max_transaction_retry_time=MAX_TRANSACTION_RETRY_SECONDS,
+                )
+                self._driver.verify_connectivity()
+            except Exception as e:
+                logger.warning("Failed to connect to Neo4j (%s). Running with fallback storage. Details: %s", self.uri, e)
+                self._close_driver()
+                self._last_failure = time.monotonic()
+                return False
+
             self._is_connected = True
+            self._last_failure = 0.0
             logger.info("Connected successfully to Neo4j graph database at %s", self.uri)
             return True
-        except Exception as e:
-            logger.warning("Failed to connect to Neo4j (%s). Running with fallback storage. Details: %s", self.uri, e)
-            self._is_connected = False
-            return False
 
     def verify_connectivity(self) -> bool:
         """Verify Neo4j driver connectivity."""
@@ -85,7 +128,7 @@ class Neo4jClient:
             return True
         except Exception as e:
             logger.error("Neo4j connectivity check failed: %s", e)
-            self._is_connected = False
+            self._mark_offline(e)
             return False
 
     def is_connected(self) -> bool:
@@ -103,6 +146,11 @@ class Neo4jClient:
                 self._driver = None
                 self._is_connected = False
 
+    def _handle_error(self, kind: str, cypher: str, error: Exception):
+        logger.error("Neo4j %s error for query [%s]: %s", kind, cypher, error)
+        if NEO4J_AVAILABLE and isinstance(error, (exceptions.ServiceUnavailable, exceptions.SessionExpired)):
+            self._mark_offline(error)
+
     def execute_write(self, cypher: str, parameters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         """Execute a write Cypher transaction."""
         if not self.is_connected():
@@ -115,8 +163,8 @@ class Neo4jClient:
                 )
                 return result
         except Exception as e:
-            logger.error("Neo4j write error for query [%s]: %s", cypher, e)
-            raise e
+            self._handle_error("write", cypher, e)
+            raise
 
     def execute_read(self, cypher: str, parameters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         """Execute a read Cypher transaction."""
@@ -130,8 +178,8 @@ class Neo4jClient:
                 )
                 return result
         except Exception as e:
-            logger.error("Neo4j read error for query [%s]: %s", cypher, e)
-            raise e
+            self._handle_error("read", cypher, e)
+            raise
 
     def init_schema(self):
         """Initialize Neo4j schema constraints and indexes."""

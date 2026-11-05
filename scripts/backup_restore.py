@@ -21,11 +21,42 @@ if backend_path not in sys.path:
 
 from app.db.neo4j_client import get_neo4j_client, init_neo4j_schema
 
+try:
+    from neo4j.time import Date, DateTime, Time
+except ImportError:  # the client module already warns when the driver is missing
+    Date = DateTime = Time = None
+
 # label -> property that uniquely identifies a node (matches the schema constraints)
 NODE_KEYS = {"Paper": "id", "Author": "name", "Repository": "name", "Topic": "name", "Search": "id", "Report": "id"}
 EXPECTED_CONSTRAINTS = ["paper_id_uniq", "author_name_uniq", "repo_name_uniq",
                         "topic_name_uniq", "search_id_uniq", "report_id_uniq"]
 BATCH = 500
+# temporary label + index so relationship restore finds nodes by index, not by scanning every node
+RESTORE_LABEL = "ResearchIQRestoring"
+RESTORE_INDEX = "restore_id_tmp"
+TEMPORAL_TAG = "$neo4j_temporal"
+
+
+def _encode(value):
+    """json.dump default: keep Neo4j temporal values restorable instead of plain strings."""
+    if DateTime is not None:
+        for kind, cls in (("datetime", DateTime), ("date", Date), ("time", Time)):
+            if isinstance(value, cls):
+                return {TEMPORAL_TAG: kind, "iso": value.iso_format()}
+    return str(value)
+
+
+def _decode(obj):
+    """json.load object_hook: turn tagged temporal values back into driver types."""
+    kind = obj.get(TEMPORAL_TAG) if isinstance(obj, dict) else None
+    if kind and DateTime is not None:
+        cls = {"datetime": DateTime, "date": Date, "time": Time}.get(kind)
+        if cls is not None:
+            try:
+                return cls.from_iso_format(obj["iso"])
+            except Exception:
+                return obj["iso"]
+    return obj
 
 
 def connect():
@@ -59,32 +90,40 @@ def backup(out_dir: str) -> str:
     os.makedirs(out_dir, exist_ok=True)
     path = os.path.join(out_dir, time.strftime("graph_backup_%Y%m%d_%H%M%S.json"))
     with open(path, "w", encoding="utf-8") as f:
-        json.dump(snapshot, f, indent=1, default=str)
+        json.dump(snapshot, f, indent=1, default=_encode)
     print(f"Backed up {len(nodes)} nodes and {len(rels)} relationships to {path}")
     return path
 
 
 def restore(path: str):
     with open(path, encoding="utf-8") as f:
-        snapshot = json.load(f)
+        snapshot = json.load(f, object_hook=_decode)
     client = connect()
     init_neo4j_schema()
+    client.execute_write(f"CREATE INDEX {RESTORE_INDEX} IF NOT EXISTS FOR (n:{RESTORE_LABEL}) ON (n._restore_id)")
+    client.execute_write("CALL db.awaitIndexes(300)")
 
     # Nodes are merged on their natural key so a restore into a live graph doesn't
-    # duplicate anything. The old elementId is kept on _restore_id while edges are rebuilt.
+    # duplicate anything. Nodes without a key (unknown label, or the key property
+    # is missing) are created as new nodes. Every restored node carries the old
+    # elementId on _restore_id plus a temporary label while edges are rebuilt.
     by_label = defaultdict(list)
     for n in snapshot["nodes"]:
         by_label[n["labels"][0] if n["labels"] else "Node"].append(n)
     for label, items in by_label.items():
         key = NODE_KEYS.get(label)
-        for i in range(0, len(items), BATCH):
-            chunk = [{"eid": n["eid"], "props": n["props"]} for n in items[i:i + BATCH]]
-            if key:
-                cypher = (f"UNWIND $rows AS row MERGE (n:`{label}` {{{key}: row.props.{key}}}) "
-                          "SET n += row.props, n._restore_id = row.eid")
-            else:
-                cypher = f"UNWIND $rows AS row CREATE (n:`{label}`) SET n = row.props, n._restore_id = row.eid"
-            client.execute_write(cypher, {"rows": chunk})
+        keyed = [n for n in items if key and n["props"].get(key) is not None]
+        unkeyed = [n for n in items if not (key and n["props"].get(key) is not None)]
+        for i in range(0, len(keyed), BATCH):
+            chunk = [{"eid": n["eid"], "props": n["props"]} for n in keyed[i:i + BATCH]]
+            client.execute_write(
+                f"UNWIND $rows AS row MERGE (n:`{label}` {{{key}: row.props.{key}}}) "
+                f"SET n += row.props, n._restore_id = row.eid, n:{RESTORE_LABEL}", {"rows": chunk})
+        for i in range(0, len(unkeyed), BATCH):
+            chunk = [{"eid": n["eid"], "props": n["props"]} for n in unkeyed[i:i + BATCH]]
+            client.execute_write(
+                f"UNWIND $rows AS row CREATE (n:`{label}`) "
+                f"SET n = row.props, n._restore_id = row.eid, n:{RESTORE_LABEL}", {"rows": chunk})
 
     by_type = defaultdict(list)
     for r in snapshot["relationships"]:
@@ -93,12 +132,14 @@ def restore(path: str):
         for i in range(0, len(items), BATCH):
             client.execute_write(f"""
             UNWIND $rows AS row
-            MATCH (a {{_restore_id: row.start}}), (b {{_restore_id: row.end}})
+            MATCH (a:{RESTORE_LABEL} {{_restore_id: row.start}})
+            MATCH (b:{RESTORE_LABEL} {{_restore_id: row.end}})
             MERGE (a)-[r:`{rel_type}`]->(b)
             SET r += row.props
             """, {"rows": items[i:i + BATCH]})
 
-    client.execute_write("MATCH (n) WHERE n._restore_id IS NOT NULL REMOVE n._restore_id")
+    client.execute_write(f"MATCH (n:{RESTORE_LABEL}) REMOVE n._restore_id, n:{RESTORE_LABEL}")
+    client.execute_write(f"DROP INDEX {RESTORE_INDEX} IF EXISTS")
     print(f"Restored {len(snapshot['nodes'])} nodes and {len(snapshot['relationships'])} relationships from {path}")
 
 

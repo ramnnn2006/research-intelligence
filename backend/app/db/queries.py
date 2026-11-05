@@ -112,7 +112,9 @@ def get_paper_code_matching(topic_name: Optional[str] = None, limit: int = 10) -
     cypher = """
     MATCH (p:Paper)<-[:IMPLEMENTS]-(r:Repository)
     OPTIONAL MATCH (p)-[:BELONGS_TO]->(t:Topic)
-    WHERE ($topic IS NULL OR $topic = '' OR t.name = $topic)
+    WITH p, r, t
+    // filter after the OPTIONAL MATCH: a WHERE attached to it would only null out t
+    WHERE $topic IS NULL OR $topic = '' OR t.name = $topic
     RETURN p.title AS paper_title, t.name AS topic, r.name AS github_repo, r.url AS repo_url, r.stars AS stars
     ORDER BY r.stars DESC
     LIMIT $limit
@@ -247,31 +249,38 @@ def get_author_productivity_ranking(limit: int = 8) -> List[Dict[str, Any]]:
     return client.execute_read(cypher, {"limit": limit})
 
 
+def _plan_tree(plan: Dict[str, Any]) -> Dict[str, Any]:
+    """The driver returns the plan as a plain dict (operatorType, args, identifiers, children)."""
+    return {
+        "operator_type": plan.get("operatorType", ""),
+        "arguments": plan.get("args", {}) or {},
+        "identifiers": plan.get("identifiers", []) or [],
+        "children": [_plan_tree(c) for c in plan.get("children", []) or []],
+    }
+
+
 def explain_query(cypher_query: str, parameters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """
     Indexing & Optimization Proof: Runs EXPLAIN on any query to inspect
     its execution plan, index lookups, and planner operations.
+    On failure returns {"has_plan": False, "error": ..., "offline": bool}.
     """
     client = get_neo4j_client()
-    if not client.is_connected():
-        client.connect()
-    
-    if client.is_connected() and client._driver:
-        try:
-            with client._driver.session(database=client.database) as session:
-                result = session.run(f"EXPLAIN {cypher_query}", parameters or {})
-                summary = result.consume()
-                plan = summary.plan
-                if plan:
-                    return {
-                        "operator_type": getattr(plan, "operator_type", "EXPLAIN"),
-                        "arguments": getattr(plan, "arguments", {}),
-                        "identifiers": getattr(plan, "identifiers", []),
-                        "has_plan": True
-                    }
-        except Exception as e:
-            logger.warning("Error running EXPLAIN via driver: %s", e)
-    return {"plan": "EXPLAIN executed", "has_plan": True}
+    if not client.connect():
+        return {"has_plan": False, "offline": True, "error": "Neo4j is not connected"}
+
+    try:
+        with client._driver.session(database=client.database) as session:
+            result = session.run(f"EXPLAIN {cypher_query}", parameters or {})
+            plan = result.consume().plan
+    except Exception as e:
+        client._handle_error("EXPLAIN", cypher_query, e)  # also notices a dropped connection
+        message = getattr(e, "message", None) or str(e)
+        return {"has_plan": False, "offline": not client.is_connected(), "error": message[:500]}
+
+    if not plan:
+        return {"has_plan": False, "offline": False, "error": "Neo4j returned no plan for this query"}
+    return {"has_plan": True, **_plan_tree(plan)}
 
 
 

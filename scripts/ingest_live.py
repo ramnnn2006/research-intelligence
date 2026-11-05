@@ -10,6 +10,7 @@ if backend_path not in sys.path:
 
 from app.db.neo4j_client import get_neo4j_client, init_neo4j_schema
 from app.db.database import save_search, save_report, get_neo4j_stats
+from app.db.ids import canonical_paper_id, arxiv_id_from
 from app.mcp.arxiv import ArxivMCP
 from app.mcp.semantic_scholar import SemanticScholarMCP
 from app.mcp.github import GitHubMCP
@@ -27,15 +28,45 @@ TOPICS = [
 ]
 
 def merge_papers(lists: List[List[Dict[str, Any]]]) -> List[Dict[str, Any]]:
-    seen = set()
+    """Dedupe by title, keeping a citation count from a later source if the first copy has none."""
+    seen: Dict[str, Dict[str, Any]] = {}
     out = []
     for lst in lists:
         for p in lst:
             k = (p.get("title") or "").strip().lower()[:60]
-            if k and k not in seen:
-                seen.add(k)
-                out.append(p)
+            if not k:
+                continue
+            if k in seen:
+                if (p.get("citations") or 0) > (seen[k].get("citations") or 0):
+                    seen[k]["citations"] = p["citations"]
+                continue
+            seen[k] = p
+            out.append(p)
     return out
+
+
+def citation_stub(cited: Dict[str, Any]) -> Dict[str, Any]:
+    """Paper row for a Semantic Scholar citing paper, keyed like every other Paper node."""
+    ext = cited.get("externalIds") or {}
+    stub = {
+        "arxiv_id": ext.get("ArXiv") or "",
+        "doi": ext.get("DOI") or "",
+        "url": cited.get("url") or "",
+        "title": cited.get("title") or "",
+    }
+    if not (stub["arxiv_id"] or stub["url"] or stub["doi"]) and cited.get("paperId"):
+        stub["url"] = f"https://www.semanticscholar.org/paper/{cited['paperId']}"
+    pid = canonical_paper_id(stub)
+    year = cited.get("year")
+    return {
+        "id": pid,
+        "arxiv_id": arxiv_id_from(pid) or None,
+        "title": stub["title"][:250],
+        "year": str(year) if year else "",
+        "citations": int(cited.get("citationCount") or 0),
+        "url": stub["url"] or pid,
+        "authors": [a.get("name") for a in (cited.get("authors") or [])[:5] if a.get("name")],
+    }
 
 async def ingest_topic(topic: str, arxiv: ArxivMCP, scholar: SemanticScholarMCP, github: GitHubMCP):
     logger.info(f"==> Fetching live data for: '{topic}' from ArXiv, Semantic Scholar & GitHub...")
@@ -60,27 +91,29 @@ async def ingest_topic(topic: str, arxiv: ArxivMCP, scholar: SemanticScholarMCP,
     client = get_neo4j_client()
     for paper in papers[:2]:
         title = paper.get("title", "")
-        if title and client.is_connected():
-            try:
-                cit_data = await scholar.get_citations(title)
-                citations = cit_data.get("citations", [])
-                if citations:
-                    with client._driver.session(database=client.database) as session:
-                        for cited in citations[:3]:
-                            cited_title = cited.get("title")
-                            if cited_title:
-                                session.run("""
-                                    MATCH (p1:Paper) WHERE p1.title = $t1
-                                    MERGE (p2:Paper {id: $t2_id})
-                                    ON CREATE SET p2.title = $t2, p2.source = 'semantic_scholar_citation', p2.citations = 0, p2.created_at = datetime()
-                                    MERGE (p2)-[:CITES]->(p1)
-                                """, {
-                                    "t1": title,
-                                    "t2": cited_title,
-                                    "t2_id": "cite_" + cited_title.lower()[:40].replace(" ", "_")
-                                })
-            except Exception as e:
-                logger.debug(f"Citation edge skip for '{title}': {e}")
+        if not title or not client.connect():
+            continue
+        try:
+            pid = canonical_paper_id(paper)
+            cit_data = await scholar.get_citations(title)
+            stubs = [citation_stub(c) for c in (cit_data.get("citations") or [])[:3] if c.get("title")]
+            stubs = [st for st in stubs if st["id"] and st["id"] != pid]
+            if stubs:
+                client.execute_write("""
+                    MATCH (p1:Paper {id: $pid})
+                    UNWIND $stubs AS c
+                    MERGE (p2:Paper {id: c.id})
+                    ON CREATE SET p2.title = c.title, p2.year = c.year, p2.citations = c.citations,
+                                  p2.url = c.url, p2.arxiv_id = c.arxiv_id,
+                                  p2.source = 'semantic_scholar_citation', p2.created_at = toString(datetime())
+                    MERGE (p2)-[:CITES]->(p1)
+                    FOREACH (author_name IN c.authors |
+                        MERGE (a:Author {name: author_name})
+                        MERGE (a)-[:AUTHORED]->(p2)
+                    )
+                """, {"pid": pid, "stubs": stubs})
+        except Exception as e:
+            logger.debug(f"Citation edge skip for '{title}': {e}")
 
 async def main():
     logger.info("Connecting to Neo4j and initializing schema...")

@@ -61,10 +61,12 @@ def run_benchmarks():
         "latency_ms": round(c_ms, 2)
     }
     print(f"[CRUD Create] Completed in {c_ms:.2f}ms -> {c_res}")
+    # with an arxiv_id the stored key is the canonical arXiv URL, not the "id" passed in
+    demo_id = (c_res or {}).get("id") or "live_crud_demo_paper_2026"
 
     # Read
     t0 = time.time()
-    r_res = read_paper_node("live_crud_demo_paper_2026")
+    r_res = read_paper_node(demo_id) or {}
     r_ms = (time.time() - t0) * 1000
     evidence["crud_operations"]["Read"] = {
         "operation": "MATCH (:Paper) with authors and relationships",
@@ -75,7 +77,7 @@ def run_benchmarks():
 
     # Update
     t0 = time.time()
-    u_res = update_paper_citations("live_crud_demo_paper_2026", 64)
+    u_res = update_paper_citations(demo_id, 64) or {}
     u_ms = (time.time() - t0) * 1000
     evidence["crud_operations"]["Update"] = {
         "operation": "SET p.citations = $new_citations, p.updated_at = datetime()",
@@ -86,7 +88,7 @@ def run_benchmarks():
 
     # Delete
     t0 = time.time()
-    d_res = delete_paper_node("live_crud_demo_paper_2026")
+    d_res = delete_paper_node(demo_id)
     d_ms = (time.time() - t0) * 1000
     evidence["crud_operations"]["Delete"] = {
         "operation": "DETACH DELETE p",

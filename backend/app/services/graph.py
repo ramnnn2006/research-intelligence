@@ -2,6 +2,25 @@ import networkx as nx
 from typing import Dict, Any, List
 from app.db.neo4j_client import get_neo4j_client
 
+
+def _node_link(G) -> dict:
+    """
+    nx.node_link_data with the edge list under both "links" and "edges".
+    networkx < 3.4 only knows "links", 3.4 and 3.5 warn about the default,
+    and 3.6+ default to "edges"; the frontend reads "links".
+    """
+    try:
+        data = nx.node_link_data(G, edges="links")
+    except TypeError:  # networkx < 3.4 has no edges= argument
+        data = nx.node_link_data(G)
+    edges = data.get("links")
+    if edges is None:
+        edges = data.get("edges", [])
+    data["links"] = edges
+    data["edges"] = edges
+    return data
+
+
 def build_knowledge_graph(topic: str, papers: list, repos: list = []) -> dict:
     G = nx.DiGraph()
     topic_node = f"TOPIC:{topic}"
@@ -31,7 +50,7 @@ def build_knowledge_graph(topic: str, papers: list, repos: list = []) -> dict:
     except Exception:
         pass
 
-    return nx.node_link_data(G)
+    return _node_link(G)
 
 def build_citation_graph(paper_title: str, citation_data: dict) -> dict:
     G = nx.DiGraph()
@@ -46,7 +65,7 @@ def build_citation_graph(paper_title: str, citation_data: dict) -> dict:
         if t:
             G.add_node(t, type="reference")
             G.add_edge(t, paper_title, relation="references")
-    return nx.node_link_data(G)
+    return _node_link(G)
 
 def fetch_neo4j_subgraph(topic: str = "", limit: int = 40) -> dict:
     """
@@ -55,15 +74,14 @@ def fetch_neo4j_subgraph(topic: str = "", limit: int = 40) -> dict:
     client = get_neo4j_client()
     G = nx.DiGraph()
     
-    if client.is_connected():
+    if client.connect():
         if topic:
             cypher = """
             MATCH (t:Topic)
             WHERE toLower(t.name) CONTAINS toLower($topic)
-            OPTIONAL MATCH (t)-[r1:HAS_PAPER]->(p:Paper)
-            OPTIONAL MATCH (a:Author)-[r2:AUTHORED]->(p)
-            OPTIONAL MATCH (rep:Report)-[r3:COVERS_TOPIC]->(t)
-            RETURN t, p, a, rep
+            OPTIONAL MATCH (p:Paper)-[:BELONGS_TO]->(t)
+            OPTIONAL MATCH (a:Author)-[:AUTHORED]->(p)
+            RETURN t, p, a
             LIMIT $limit
             """
             params = {"topic": topic, "limit": limit}
@@ -71,7 +89,7 @@ def fetch_neo4j_subgraph(topic: str = "", limit: int = 40) -> dict:
             cypher = """
             MATCH (p:Paper)
             OPTIONAL MATCH (a:Author)-[:AUTHORED]->(p)
-            OPTIONAL MATCH (t:Topic)-[:HAS_PAPER]->(p)
+            OPTIONAL MATCH (p)-[:BELONGS_TO]->(t:Topic)
             RETURN p, a, t
             LIMIT $limit
             """
@@ -102,8 +120,8 @@ def fetch_neo4j_subgraph(topic: str = "", limit: int = 40) -> dict:
             except Exception:
                 pass
             
-            return nx.node_link_data(G)
+            return _node_link(G)
         except Exception:
             pass
 
-    return nx.node_link_data(G)
+    return _node_link(G)
