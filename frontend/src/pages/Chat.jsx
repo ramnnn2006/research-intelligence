@@ -98,7 +98,7 @@ function renderTables(text) {
     let j = i + 2
     while (j < lines.length && TABLE_ROW.test(lines[j])) rows.push(tableCells(lines[j++], head.length))
     i = j - 1
-    const th = head.map(c => `<th style="${CELL_STYLE};background:rgba(255,255,255,.04)">${c}</th>`).join('')
+    const th = head.map(c => `<th style="${CELL_STYLE};background:rgba(30,79,160,0.07)">${c}</th>`).join('')
     const body = rows.map(r => `<tr>${r.map(c => `<td style="${CELL_STYLE}">${c}</td>`).join('')}</tr>`).join('')
     out.push(`<div style="overflow-x:auto;margin:8px 0"><table style="border-collapse:collapse;width:100%;font-size:12px"><thead><tr>${th}</tr></thead><tbody>${body}</tbody></table></div>`)
   }
@@ -111,9 +111,9 @@ function formatMarkdown(text) {
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'))
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/`([^`\n]+)`/g, '<code style="background:rgba(255,255,255,.08);padding:1px 5px;border-radius:4px;font-family:monospace;font-size:12px">$1</code>')
-    .replace(/^### (.+)$/gm, '<h4 style="color:#58a6ff;margin:12px 0 4px;font-size:13px;font-weight:600">$1</h4>')
-    .replace(/^## (.+)$/gm, '<h3 style="color:#58a6ff;margin:14px 0 6px;font-size:14px;font-weight:600">$1</h3>')
+    .replace(/`([^`\n]+)`/g, '<code style="background:rgba(30,79,160,0.09);padding:1px 5px;border-radius:4px;font-family:monospace;font-size:12px">$1</code>')
+    .replace(/^### (.+)$/gm, '<h4 style="color:#1E4FA0;margin:12px 0 4px;font-size:13px;font-weight:600">$1</h4>')
+    .replace(/^## (.+)$/gm, '<h3 style="color:#1E4FA0;margin:14px 0 6px;font-size:14px;font-weight:600">$1</h3>')
     .replace(/^- (.+)$/gm, '<li style="margin:4px 0">$1</li>')
     .replace(/^\d+\. (.+)$/gm, '<li style="margin:4px 0">$1</li>')
     .replace(/(<li[\s\S]*?<\/li>)+/g, '<ul style="padding-left:18px;margin:8px 0">$&</ul>')
@@ -122,7 +122,7 @@ function formatMarkdown(text) {
 
   // Highlight page citations like [Page 5] or [Page 3, 4]
   html = html.replace(/\[Page\s*([0-9,\s\-]+)\]/gi, (m, pages) => {
-    return `<span style="display:inline-flex;align-items:center;background:rgba(88,166,255,0.15);color:#58a6ff;border:1px solid rgba(88,166,255,0.35);padding:1px 6px;border-radius:12px;font-size:11px;font-weight:600;margin:0 2px;letter-spacing:0.02em">📄 Page ${pages}</span>`
+    return `<span style="display:inline-flex;align-items:center;background:rgba(30,79,160,0.15);color:#1E4FA0;border:1px solid rgba(30,79,160,0.35);padding:1px 6px;border-radius:12px;font-size:11px;font-weight:600;margin:0 2px;letter-spacing:0.02em">📄 Page ${pages}</span>`
   })
 
   return '<p style="margin:0">' + html + '</p>'
@@ -293,9 +293,9 @@ export default function Chat() {
   }
 
   return (
-    <div style={{ height: '100%', display: 'flex', overflow: 'hidden' }}>
+    <div className="ri-split" style={{ height: '100%' }}>
       {/* Sidebar */}
-      <div style={{
+      <div className="ri-side" style={{
         width: 270, flexShrink: 0, borderRight: '1px solid var(--border)',
         display: 'flex', flexDirection: 'column', overflowY: 'auto', padding: 14, gap: 12,
         background: 'var(--panel)',
@@ -308,7 +308,7 @@ export default function Chat() {
               flex: 1, padding: '7px 4px', fontSize: 11, fontWeight: 600, borderRadius: 6,
               border: 'none', cursor: 'pointer', transition: 'all .15s',
               background: mode === 'pdf' ? 'var(--accent)' : 'transparent',
-              color: mode === 'pdf' ? '#000' : 'var(--muted)',
+              color: mode === 'pdf' ? '#FFFFFF' : 'var(--muted)',
             }}
           >
             📄 Full PDF RAG
@@ -319,7 +319,7 @@ export default function Chat() {
               flex: 1, padding: '7px 4px', fontSize: 11, fontWeight: 600, borderRadius: 6,
               border: 'none', cursor: 'pointer', transition: 'all .15s',
               background: mode === 'global' ? 'var(--accent)' : 'transparent',
-              color: mode === 'global' ? '#000' : 'var(--muted)',
+              color: mode === 'global' ? '#FFFFFF' : 'var(--muted)',
             }}
           >
             🌐 ArXiv Search RAG
@@ -401,7 +401,7 @@ export default function Chat() {
                 onClick={() => fileInputRef.current?.click()}
                 disabled={loadingPdf}
                 style={{
-                  width: '100%', background: 'rgba(88,166,255,0.08)', border: '1px dashed var(--accent)',
+                  width: '100%', background: 'rgba(30,79,160,0.08)', border: '1px dashed var(--accent)',
                   borderRadius: 6, color: 'var(--accent)', padding: '8px 10px', fontSize: 12,
                   fontWeight: 500, cursor: loadingPdf ? 'not-allowed' : 'pointer', marginBottom: 10,
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
@@ -427,7 +427,7 @@ export default function Chat() {
                   onClick={() => handleFetchArxiv()}
                   disabled={loadingPdf || !arxivIdInput.trim()}
                   style={{
-                    background: 'var(--accent)', color: '#000', border: 'none',
+                    background: 'var(--accent)', color: '#FFFFFF', border: 'none',
                     borderRadius: 5, padding: '6px 10px', fontSize: 11, fontWeight: 600,
                     cursor: loadingPdf || !arxivIdInput.trim() ? 'not-allowed' : 'pointer'
                   }}
@@ -541,10 +541,10 @@ export default function Chat() {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{
-              background: mode === 'pdf' ? 'rgba(88,166,255,0.15)' : 'rgba(124,58,237,0.15)',
+              background: mode === 'pdf' ? 'rgba(30,79,160,0.15)' : 'rgba(124,58,237,0.15)',
               color: mode === 'pdf' ? 'var(--accent)' : 'var(--purple)',
               padding: '2px 8px', borderRadius: 4, fontWeight: 600, fontSize: 11,
-              border: `1px solid ${mode === 'pdf' ? 'rgba(88,166,255,0.3)' : 'rgba(124,58,237,0.3)'}`
+              border: `1px solid ${mode === 'pdf' ? 'rgba(30,79,160,0.3)' : 'rgba(124,58,237,0.3)'}`
             }}>
               {mode === 'pdf' ? '📄 Full PDF Deep RAG' : '🌐 Global ArXiv RAG'}
             </span>
@@ -592,7 +592,7 @@ export default function Chat() {
                   <button
                     onClick={() => fileInputRef.current?.click()}
                     style={{
-                      background: 'var(--accent)', color: '#000', border: 'none',
+                      background: 'var(--accent)', color: '#FFFFFF', border: 'none',
                       borderRadius: 6, padding: '8px 16px', fontSize: 12, fontWeight: 600, cursor: 'pointer'
                     }}
                   >
@@ -618,7 +618,7 @@ export default function Chat() {
               <div style={{
                 maxWidth: '85%',
                 background: m.role === 'user' ? 'var(--accent)' : 'var(--panel2)',
-                color: m.role === 'user' ? '#000' : 'var(--text)',
+                color: m.role === 'user' ? '#FFFFFF' : 'var(--text)',
                 borderRadius: 12,
                 borderBottomRightRadius: m.role === 'user' ? 3 : 12,
                 borderBottomLeftRadius: m.role === 'bot' ? 3 : 12,
@@ -651,12 +651,12 @@ export default function Chat() {
                           <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
                             {m.chunks.map((c, ci) => (
                               <div key={ci} style={{
-                                background: 'rgba(0,0,0,0.25)', border: '1px solid var(--border)',
+                                background: 'rgba(22,33,55,0.25)', border: '1px solid var(--border)',
                                 borderRadius: 6, padding: '8px 10px', fontSize: 11,
                               }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                                   <span style={{
-                                    background: 'rgba(88,166,255,0.2)', color: 'var(--accent)',
+                                    background: 'rgba(30,79,160,0.2)', color: 'var(--accent)',
                                     padding: '1px 6px', borderRadius: 10, fontWeight: 600, fontSize: 10
                                   }}>
                                     📄 Page {c.page}
@@ -757,7 +757,7 @@ export default function Chat() {
             disabled={loading || loadingPdf || !input.trim()}
             style={{
               background: loading || loadingPdf || !input.trim() ? 'var(--border)' : 'var(--accent)',
-              color: loading || loadingPdf || !input.trim() ? 'var(--muted)' : '#000',
+              color: loading || loadingPdf || !input.trim() ? 'var(--muted)' : '#FFFFFF',
               border: 'none', borderRadius: 8, padding: '10px 22px',
               fontWeight: 600, fontSize: 14, transition: 'all .15s',
               cursor: loading || loadingPdf || !input.trim() ? 'not-allowed' : 'pointer',

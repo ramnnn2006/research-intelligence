@@ -2,9 +2,9 @@ import React from 'react'
 import { safeHttpUrl, toText } from '../utils/safe'
 
 const badge = {
-  arxiv: { bg: 'rgba(88,166,255,.12)', c: '#58a6ff' },
-  semantic_scholar: { bg: 'rgba(124,58,237,.15)', c: '#bc8cff' },
-  openalex: { bg: 'rgba(16,185,129,.15)', c: '#10b981' },
+  arxiv: { bg: 'rgba(30,79,160,.12)', c: '#1E4FA0' },
+  semantic_scholar: { bg: 'rgba(124,58,237,.15)', c: '#6B3FA0' },
+  openalex: { bg: 'rgba(16,185,129,.15)', c: '#0F766E' },
 }
 
 // onViewCitations / onSelect / onAuthorClick are optional. Controls whose handler is
@@ -25,8 +25,8 @@ export default function PaperCard({ paper, onSelect, selected, onViewCitations, 
     <div
       onClick={inspect ? handleCardClick : undefined}
       style={{
-        background: 'var(--panel2, #161b22)',
-        border: `1px solid ${selected ? '#58a6ff' : '#21262d'}`,
+        background: 'var(--panel2, #FAF6EC)',
+        border: `1px solid ${selected ? '#1E4FA0' : '#E6E0D0'}`,
         borderRadius: 'var(--radius, 8px)',
         padding: '14px',
         cursor: inspect ? 'pointer' : 'default',
@@ -35,8 +35,8 @@ export default function PaperCard({ paper, onSelect, selected, onViewCitations, 
         flexDirection: 'column',
         gap: 8
       }}
-      onMouseEnter={inspect ? (e => e.currentTarget.style.borderColor = '#388bfd') : undefined}
-      onMouseLeave={inspect ? (e => e.currentTarget.style.borderColor = selected ? '#58a6ff' : '#21262d') : undefined}
+      onMouseEnter={inspect ? (e => e.currentTarget.style.borderColor = '#1E4FA0') : undefined}
+      onMouseLeave={inspect ? (e => e.currentTarget.style.borderColor = selected ? '#1E4FA0' : '#E6E0D0') : undefined}
     >
       {/* Title & Source Badge */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
@@ -45,13 +45,13 @@ export default function PaperCard({ paper, onSelect, selected, onViewCitations, 
             href={href}
             target="_blank"
             rel="noreferrer"
-            style={{ fontWeight: 600, fontSize: 14, color: 'var(--accent, #58a6ff)', lineHeight: 1.4, flex: 1, textDecoration: 'none' }}
+            style={{ fontWeight: 600, fontSize: 14, color: 'var(--accent, #1E4FA0)', lineHeight: 1.4, flex: 1, textDecoration: 'none' }}
             onClick={e => e.stopPropagation()}
           >
             {toText(paper.title)}
           </a>
         ) : (
-          <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--accent, #58a6ff)', lineHeight: 1.4, flex: 1 }}>
+          <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--accent, #1E4FA0)', lineHeight: 1.4, flex: 1 }}>
             {toText(paper.title)}
           </span>
         )}
@@ -71,12 +71,12 @@ export default function PaperCard({ paper, onSelect, selected, onViewCitations, 
       </div>
 
       {/* Metadata & Authors (clickable only when onAuthorClick is given) */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', fontSize: 12, color: 'var(--muted, #8b949e)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', fontSize: 12, color: 'var(--muted, #6E6858)' }}>
         {paper.year && <span>📅 {toText(paper.year)}</span>}
         {paper.year && authors.length > 0 && <span>·</span>}
         {authors.length > 0 && (onAuthorClick
           ? <>
-              <span style={{ color: '#6e7681' }}>Authors:</span>
+              <span style={{ color: '#8A8375' }}>Authors:</span>
               {authors.slice(0, 4).map((auth, idx) => (
                 <button
                   key={idx}
@@ -84,23 +84,23 @@ export default function PaperCard({ paper, onSelect, selected, onViewCitations, 
                   title={`Search all papers by ${auth}`}
                   onClick={e => { e.stopPropagation(); onAuthorClick(auth) }}
                   style={{
-                    background: 'rgba(227, 179, 65, 0.1)',
-                    border: '1px solid rgba(227, 179, 65, 0.25)',
-                    color: '#e3b341',
+                    background: 'rgba(176,138,0, 0.1)',
+                    border: '1px solid rgba(176,138,0, 0.25)',
+                    color: '#B08A00',
                     borderRadius: 10,
                     padding: '1px 7px',
                     fontSize: 11,
                     cursor: 'pointer',
                     transition: 'background .15s'
                   }}
-                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(227, 179, 65, 0.25)' }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(227, 179, 65, 0.1)' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(176,138,0, 0.25)' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(176,138,0, 0.1)' }}
                 >
                   👤 {auth}
                 </button>
               ))}
               {authors.length > 4 && (
-                <span style={{ color: '#6e7681', fontSize: 11 }}>+{authors.length - 4} more</span>
+                <span style={{ color: '#8A8375', fontSize: 11 }}>+{authors.length - 4} more</span>
               )}
             </>
           : <span>{authors.slice(0, 3).join(', ')}{authors.length > 3 ? ' et al.' : ''}</span>
@@ -112,7 +112,7 @@ export default function PaperCard({ paper, onSelect, selected, onViewCitations, 
       {paper.summary && (
         <div style={{
           fontSize: 12,
-          color: 'var(--muted2, #c9d1d9)',
+          color: 'var(--muted2, #44516E)',
           lineHeight: 1.55,
           overflow: 'hidden',
           display: '-webkit-box',
@@ -130,17 +130,17 @@ export default function PaperCard({ paper, onSelect, selected, onViewCitations, 
           justifyContent: 'space-between',
           alignItems: 'center',
           paddingTop: 4,
-          borderTop: '1px solid #21262d',
+          borderTop: '1px solid #E6E0D0',
           marginTop: 2
         }}>
           <button
             type="button"
             onClick={e => { e.stopPropagation(); handleCardClick() }}
             style={{
-              background: 'rgba(63, 185, 80, 0.12)',
-              border: '1px solid rgba(63, 185, 80, 0.3)',
+              background: 'rgba(46,125,70, 0.12)',
+              border: '1px solid rgba(46,125,70, 0.3)',
               borderRadius: 6,
-              color: '#3fb950',
+              color: '#2E7D46',
               padding: '3px 10px',
               fontSize: 11,
               fontWeight: 600,
@@ -150,14 +150,14 @@ export default function PaperCard({ paper, onSelect, selected, onViewCitations, 
               gap: 5,
               transition: 'all 0.15s'
             }}
-            onMouseEnter={e => e.currentTarget.style.background = 'rgba(63, 185, 80, 0.22)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'rgba(63, 185, 80, 0.12)'}
+            onMouseEnter={e => e.currentTarget.style.background = 'rgba(46,125,70, 0.22)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'rgba(46,125,70, 0.12)'}
           >
             📊 {onViewCitations ? 'Citations & Network' : 'Select'}
             {paper.citations ? ` (${Number(paper.citations).toLocaleString()})` : ''}
           </button>
 
-          <span style={{ fontSize: 11, color: '#6e7681' }}>
+          <span style={{ fontSize: 11, color: '#8A8375' }}>
             Click card to inspect
           </span>
         </div>

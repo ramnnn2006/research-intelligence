@@ -46,52 +46,52 @@ export default function Survey() {
 
   return (
     <div style={{ height: '100%', overflowY: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ background: '#161b22', border: '1px solid #21262d', borderRadius: 8, padding: 20, flexShrink: 0 }}>
-        <h2 style={{ fontSize: 16, marginBottom: 4 }}>📚 Literature Survey Generator</h2>
-        <p style={{ color: '#8b949e', fontSize: 13, marginBottom: 14 }}>Structured multi-section survey with themes, trends, gaps, and conclusion</p>
-        <div style={{ display: 'flex', gap: 10 }}>
+      <div style={{ background: '#FAF6EC', border: '1px solid #E6E0D0', borderRadius: 8, padding: 20, flexShrink: 0 }}>
+        <h2 className="ri-title" style={{ fontSize: 18, marginBottom: 4 }}>Literature Survey Generator</h2>
+        <p style={{ color: '#6E6858', fontSize: 13, marginBottom: 14 }}>Structured multi-section survey with themes, trends, gaps, and conclusion</p>
+        <div className="ri-form-row" style={{ display: 'flex', gap: 10 }}>
           <input value={topic} onChange={e => setTopic(e.target.value)} onKeyDown={e => e.key === 'Enter' && run()}
             placeholder="e.g. Transformer architectures for code generation"
-            style={{ flex: 1, background: '#0d1117', border: '1px solid #30363d', borderRadius: 6, color: '#e6edf3', padding: '8px 12px', fontSize: 14, outline: 'none' }}
-            onFocus={e => e.target.style.borderColor = '#58a6ff'}
-            onBlur={e => e.target.style.borderColor = '#30363d'} />
+            style={{ flex: 1, background: '#FFFFFF', border: '1px solid #D9D2BE', borderRadius: 6, color: '#2B3A55', padding: '8px 12px', fontSize: 14, outline: 'none' }}
+            onFocus={e => e.target.style.borderColor = '#1E4FA0'}
+            onBlur={e => e.target.style.borderColor = '#D9D2BE'} />
           <button onClick={run} disabled={loading || !topic.trim()}
-            style={{ background: loading ? '#21262d' : '#58a6ff', color: loading ? '#8b949e' : '#000', border: 'none', borderRadius: 6, padding: '8px 20px', fontWeight: 600, fontSize: 14, cursor: loading ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}>
+            style={{ background: loading ? '#E6E0D0' : '#1E4FA0', color: loading ? '#6E6858' : '#FFFFFF', border: 'none', borderRadius: 6, padding: '8px 20px', fontWeight: 600, fontSize: 14, cursor: loading ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}>
             {loading ? <><Spinner />Generating…</> : 'Generate Survey'}
           </button>
         </div>
-        {error && <div style={{ marginTop: 10, color: '#f85149', fontSize: 13, background: 'rgba(248,81,73,.08)', padding: '8px 12px', borderRadius: 6 }}>⚠️ {error}</div>}
-        {loading && <p style={{ color: '#8b949e', fontSize: 12, marginTop: 8 }}>Collecting papers and generating survey — ~30s…</p>}
+        {error && <div style={{ marginTop: 10, color: '#C13B2E', fontSize: 13, background: 'rgba(193,59,46,.08)', padding: '8px 12px', borderRadius: 6 }}>⚠️ {error}</div>}
+        {loading && <p style={{ color: '#6E6858', fontSize: 12, marginTop: 8 }}>Collecting papers and generating survey — ~30s…</p>}
       </div>
 
       {s && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 16, alignItems: 'start' }}>
-          <div style={{ background: '#161b22', border: '1px solid #21262d', borderRadius: 8, padding: 20 }}>
+          <div style={{ background: '#FAF6EC', border: '1px solid #E6E0D0', borderRadius: 8, padding: 20 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <h3 style={{ fontSize: 15 }}>Survey: {ranTopic}</h3>
-              <button onClick={exportMd} style={{ background: 'none', border: '1px solid #58a6ff', color: '#58a6ff', borderRadius: 6, padding: '5px 12px', fontSize: 12, cursor: 'pointer' }}>⬇ Export .md</button>
+              <button onClick={exportMd} style={{ background: 'none', border: '1px solid #1E4FA0', color: '#1E4FA0', borderRadius: 6, padding: '5px 12px', fontSize: 12, cursor: 'pointer' }}>⬇ Export .md</button>
             </div>
             {s.introduction && (
-              <div style={{ background: '#0d1117', borderLeft: '3px solid #58a6ff', padding: '12px 14px', borderRadius: 4, marginBottom: 18, fontSize: 13, color: '#8b949e', lineHeight: 1.75 }}>{s.introduction}</div>
+              <div style={{ background: '#FFFFFF', borderLeft: '3px solid #1E4FA0', padding: '12px 14px', borderRadius: 4, marginBottom: 18, fontSize: 13, color: '#6E6858', lineHeight: 1.75 }}>{s.introduction}</div>
             )}
             {s.sections.map((sec, i) => (
               <div key={i} style={{ marginBottom: 18 }}>
-                <h4 style={{ color: '#bc8cff', fontSize: 14, marginBottom: 7, fontWeight: 600 }}>{sec.heading}</h4>
-                <p style={{ fontSize: 13, color: '#8b949e', lineHeight: 1.75, margin: 0 }}>{sec.content}</p>
+                <h4 style={{ color: '#6B3FA0', fontSize: 14, marginBottom: 7, fontWeight: 600 }}>{sec.heading}</h4>
+                <p style={{ fontSize: 13, color: '#6E6858', lineHeight: 1.75, margin: 0 }}>{sec.content}</p>
               </div>
             ))}
             {s.conclusion && (
-              <div style={{ background: '#0d1117', borderLeft: '3px solid #3fb950', padding: '12px 14px', borderRadius: 4, marginTop: 4, fontSize: 13, color: '#8b949e', lineHeight: 1.75 }}>
-                <strong style={{ color: '#3fb950' }}>Conclusion: </strong>{s.conclusion}
+              <div style={{ background: '#FFFFFF', borderLeft: '3px solid #2E7D46', padding: '12px 14px', borderRadius: 4, marginTop: 4, fontSize: 13, color: '#6E6858', lineHeight: 1.75 }}>
+                <strong style={{ color: '#2E7D46' }}>Conclusion: </strong>{s.conclusion}
               </div>
             )}
             {s.gaps.length > 0 && (
               <div style={{ marginTop: 20 }}>
-                <h4 style={{ color: '#e3b341', fontSize: 14, marginBottom: 10 }}>💡 Research Gaps</h4>
+                <h4 style={{ color: '#B08A00', fontSize: 14, marginBottom: 10 }}>💡 Research Gaps</h4>
                 {s.gaps.map((g, i) => (
-                  <div key={i} style={{ display: 'flex', gap: 10, marginBottom: 10, alignItems: 'flex-start', background: '#0d1117', padding: '8px 12px', borderRadius: 6 }}>
-                    <span style={{ background: 'rgba(227,179,65,.15)', color: '#e3b341', width: 22, height: 22, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{i + 1}</span>
-                    <span style={{ fontSize: 13, color: '#8b949e', lineHeight: 1.6 }}>{g}</span>
+                  <div key={i} style={{ display: 'flex', gap: 10, marginBottom: 10, alignItems: 'flex-start', background: '#FFFFFF', padding: '8px 12px', borderRadius: 6 }}>
+                    <span style={{ background: 'rgba(176,138,0,.15)', color: '#B08A00', width: 22, height: 22, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{i + 1}</span>
+                    <span style={{ fontSize: 13, color: '#6E6858', lineHeight: 1.6 }}>{g}</span>
                   </div>
                 ))}
               </div>
@@ -99,23 +99,23 @@ export default function Survey() {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {result?.graph && (
-              <div style={{ background: '#161b22', border: '1px solid #21262d', borderRadius: 8, padding: 14 }}>
+              <div style={{ background: '#FAF6EC', border: '1px solid #E6E0D0', borderRadius: 8, padding: 14 }}>
                 <h3 style={{ fontSize: 13, marginBottom: 10, fontWeight: 600 }}>Knowledge Graph</h3>
                 <Graph data={result.graph} height={420} />
               </div>
             )}
             {result?.papers?.length > 0 && (
-              <div style={{ background: '#161b22', border: '1px solid #21262d', borderRadius: 8, padding: 14 }}>
-                <h3 style={{ fontSize: 13, marginBottom: 10, color: '#8b949e' }}>Papers Analysed ({result.papers.length})</h3>
+              <div style={{ background: '#FAF6EC', border: '1px solid #E6E0D0', borderRadius: 8, padding: 14 }}>
+                <h3 style={{ fontSize: 13, marginBottom: 10, color: '#6E6858' }}>Papers Analysed ({result.papers.length})</h3>
                 {result.papers.map((p, i) => (
-                  <div key={i} style={{ borderBottom: i < result.papers.length - 1 ? '1px solid #21262d' : 'none', paddingBottom: 8, marginBottom: 8 }}>
+                  <div key={i} style={{ borderBottom: i < result.papers.length - 1 ? '1px solid #E6E0D0' : 'none', paddingBottom: 8, marginBottom: 8 }}>
                     <a href={p.url || p.id} target="_blank" rel="noreferrer"
-                      style={{ fontSize: 12, color: '#58a6ff', lineHeight: 1.4, display: 'block', textDecoration: 'none' }}
+                      style={{ fontSize: 12, color: '#1E4FA0', lineHeight: 1.4, display: 'block', textDecoration: 'none' }}
                       onMouseEnter={e => e.target.style.textDecoration = 'underline'}
                       onMouseLeave={e => e.target.style.textDecoration = 'none'}>
                       {p.title}
                     </a>
-                    <div style={{ fontSize: 11, color: '#6e7681', marginTop: 2 }}>
+                    <div style={{ fontSize: 11, color: '#8A8375', marginTop: 2 }}>
                       {(p.authors || []).slice(0, 2).join(', ')}
                       {p.year ? ` · ${p.year}` : ''}
                       {p.citations ? ` · ${p.citations} citations` : ''}

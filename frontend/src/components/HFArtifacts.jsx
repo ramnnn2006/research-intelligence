@@ -61,8 +61,8 @@ function Tags({ tags }) {
     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
       {list.map((t, idx) => (
         <span key={idx} style={{
-          background: '#0d1117', border: '1px solid #30363d',
-          color: '#6e7681', padding: '1px 6px', borderRadius: 4, fontSize: 10
+          background: '#FFFFFF', border: '1px solid #D9D2BE',
+          color: '#8A8375', padding: '1px 6px', borderRadius: 4, fontSize: 10
         }}>
           {t}
         </span>
@@ -93,30 +93,30 @@ export function ModelCard({ model }) {
 
   return (
     <div style={{
-      background: '#161b22', border: '1px solid #21262d', borderRadius: 8,
+      background: '#FAF6EC', border: '1px solid #E6E0D0', borderRadius: 8,
       padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8,
       transition: 'border-color .15s'
     }}
-    onMouseEnter={e => e.currentTarget.style.borderColor = '#ff9d00'}
-    onMouseLeave={e => e.currentTarget.style.borderColor = '#21262d'}
+    onMouseEnter={e => e.currentTarget.style.borderColor = '#BF6210'}
+    onMouseLeave={e => e.currentTarget.style.borderColor = '#E6E0D0'}
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 13, color: '#8b949e' }}>🤗 {toText(model.author)}/</span>
+            <span style={{ fontSize: 13, color: '#6E6858' }}>🤗 {toText(model.author)}/</span>
             {url ? (
               <a href={url} target="_blank" rel="noreferrer"
-                style={{ fontSize: 14, fontWeight: 600, color: '#ff9d00', textDecoration: 'none' }}>
+                style={{ fontSize: 14, fontWeight: 600, color: '#BF6210', textDecoration: 'none' }}>
                 {toText(model.name)}
               </a>
             ) : (
-              <span style={{ fontSize: 14, fontWeight: 600, color: '#ff9d00' }}>{toText(model.name)}</span>
+              <span style={{ fontSize: 14, fontWeight: 600, color: '#BF6210' }}>{toText(model.name)}</span>
             )}
             {model.pipeline_tag && (
               <span style={{
-                background: 'rgba(88,166,255,0.12)', color: '#58a6ff',
+                background: 'rgba(30,79,160,0.12)', color: '#1E4FA0',
                 padding: '2px 7px', borderRadius: 10, fontSize: 10, fontWeight: 600,
-                border: '1px solid rgba(88,166,255,0.25)'
+                border: '1px solid rgba(30,79,160,0.25)'
               }}>
                 {toText(model.pipeline_tag)}
               </span>
@@ -128,9 +128,9 @@ export function ModelCard({ model }) {
           <button
             onClick={copySnippet}
             style={{
-              background: copied ? 'rgba(63,185,80,0.2)' : failed ? 'rgba(248,81,73,0.12)' : 'rgba(255,255,255,0.06)',
-              color: copied ? '#3fb950' : failed ? '#f85149' : '#8b949e',
-              border: `1px solid ${copied ? 'rgba(63,185,80,0.4)' : failed ? 'rgba(248,81,73,0.4)' : '#30363d'}`,
+              background: copied ? 'rgba(46,125,70,0.2)' : failed ? 'rgba(193,59,46,0.12)' : 'rgba(30,79,160,0.08)',
+              color: copied ? '#2E7D46' : failed ? '#C13B2E' : '#6E6858',
+              border: `1px solid ${copied ? 'rgba(46,125,70,0.4)' : failed ? 'rgba(193,59,46,0.4)' : '#D9D2BE'}`,
               borderRadius: 5, padding: '3px 8px', fontSize: 11, cursor: 'pointer'
             }}
           >
@@ -140,7 +140,7 @@ export function ModelCard({ model }) {
       </div>
 
       {/* Metrics Row */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 11, color: '#8b949e' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 11, color: '#6E6858' }}>
         <span>📥 {(Number(model.downloads) || 0).toLocaleString()} downloads</span>
         <span>❤️ {(Number(model.likes) || 0).toLocaleString()} likes</span>
         {model.arxiv_id && (
@@ -148,7 +148,7 @@ export function ModelCard({ model }) {
             href={`https://arxiv.org/abs/${encodeURI(toText(model.arxiv_id))}`}
             target="_blank"
             rel="noreferrer"
-            style={{ color: '#58a6ff', fontSize: 11 }}
+            style={{ color: '#1E4FA0', fontSize: 11 }}
           >
             📄 Paper ({toText(model.arxiv_id)})
           </a>
@@ -164,26 +164,26 @@ export function DatasetCard({ dataset }) {
   const url = safeHttpUrl(dataset.url)
   return (
     <div style={{
-      background: '#161b22', border: '1px solid #21262d', borderRadius: 8,
+      background: '#FAF6EC', border: '1px solid #E6E0D0', borderRadius: 8,
       padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8,
       transition: 'border-color .15s'
     }}
-    onMouseEnter={e => e.currentTarget.style.borderColor = '#00b4d8'}
-    onMouseLeave={e => e.currentTarget.style.borderColor = '#21262d'}
+    onMouseEnter={e => e.currentTarget.style.borderColor = '#0E7490'}
+    onMouseLeave={e => e.currentTarget.style.borderColor = '#E6E0D0'}
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 13, color: '#8b949e' }}>📊 {toText(dataset.author)}/</span>
+          <span style={{ fontSize: 13, color: '#6E6858' }}>📊 {toText(dataset.author)}/</span>
           {url ? (
             <a href={url} target="_blank" rel="noreferrer"
-              style={{ fontSize: 14, fontWeight: 600, color: '#00b4d8', textDecoration: 'none' }}>
+              style={{ fontSize: 14, fontWeight: 600, color: '#0E7490', textDecoration: 'none' }}>
               {toText(dataset.name)}
             </a>
           ) : (
-            <span style={{ fontSize: 14, fontWeight: 600, color: '#00b4d8' }}>{toText(dataset.name)}</span>
+            <span style={{ fontSize: 14, fontWeight: 600, color: '#0E7490' }}>{toText(dataset.name)}</span>
           )}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 11, color: '#8b949e' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 11, color: '#6E6858' }}>
           <span>📥 {(Number(dataset.downloads) || 0).toLocaleString()} downloads</span>
           <span>❤️ {(Number(dataset.likes) || 0).toLocaleString()} likes</span>
         </div>

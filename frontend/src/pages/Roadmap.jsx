@@ -5,7 +5,7 @@ import Spinner from '../components/Spinner'
 import RepoList from '../components/RepoList'
 import { toText, asArray, safeHttpUrl } from '../utils/safe'
 
-const PC = ['#58a6ff', '#bc8cff', '#3fb950', '#e3b341']
+const PC = ['#1E4FA0', '#6B3FA0', '#2E7D46', '#B08A00']
 
 export default function Roadmap() {
   // follows the header topic until edited here
@@ -60,27 +60,27 @@ export default function Roadmap() {
     <div style={{ height: '100%', overflowY: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
 
       {/* Input */}
-      <div style={{ background: '#161b22', border: '1px solid #21262d', borderRadius: 8, padding: 20, flexShrink: 0 }}>
-        <h2 style={{ fontSize: 16, marginBottom: 4 }}>🗺️ Research Roadmap Generator</h2>
-        <p style={{ color: '#8b949e', fontSize: 13, marginBottom: 14 }}>
+      <div style={{ background: '#FAF6EC', border: '1px solid #E6E0D0', borderRadius: 8, padding: 20, flexShrink: 0 }}>
+        <h2 className="ri-title" style={{ fontSize: 18, marginBottom: 4 }}>Research Roadmap Generator</h2>
+        <p style={{ color: '#6E6858', fontSize: 13, marginBottom: 14 }}>
           Structured learning plan with phases, tasks, key papers, and skills
         </p>
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div className="ri-form-row" style={{ display: 'flex', gap: 10 }}>
           <input
             value={topic} onChange={e => setTopic(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && run()}
             placeholder="e.g. multimodal learning for robotics"
-            style={{ flex: 1, background: '#0d1117', border: '1px solid #30363d', borderRadius: 6, color: '#e6edf3', padding: '8px 12px', fontSize: 14, outline: 'none' }}
-            onFocus={e => e.target.style.borderColor = '#58a6ff'}
-            onBlur={e => e.target.style.borderColor = '#30363d'}
+            style={{ flex: 1, background: '#FFFFFF', border: '1px solid #D9D2BE', borderRadius: 6, color: '#2B3A55', padding: '8px 12px', fontSize: 14, outline: 'none' }}
+            onFocus={e => e.target.style.borderColor = '#1E4FA0'}
+            onBlur={e => e.target.style.borderColor = '#D9D2BE'}
           />
           <button onClick={run} disabled={loading || !topic.trim()}
-            style={{ background: loading ? '#21262d' : '#58a6ff', color: loading ? '#8b949e' : '#000', border: 'none', borderRadius: 6, padding: '8px 20px', fontWeight: 600, fontSize: 14, cursor: loading ? 'not-allowed' : 'pointer' }}>
+            style={{ background: loading ? '#E6E0D0' : '#1E4FA0', color: loading ? '#6E6858' : '#FFFFFF', border: 'none', borderRadius: 6, padding: '8px 20px', fontWeight: 600, fontSize: 14, cursor: loading ? 'not-allowed' : 'pointer' }}>
             {loading ? <><Spinner />Building…</> : 'Build Roadmap'}
           </button>
         </div>
-        {error && <div style={{ marginTop: 10, color: '#f85149', fontSize: 13, background: 'rgba(248,81,73,.08)', padding: '8px 12px', borderRadius: 6 }}>⚠️ {error}</div>}
-        {loading && <p style={{ color: '#8b949e', fontSize: 12, marginTop: 8 }}>Fetching papers and building roadmap — ~20s…</p>}
+        {error && <div style={{ marginTop: 10, color: '#C13B2E', fontSize: 13, background: 'rgba(193,59,46,.08)', padding: '8px 12px', borderRadius: 6 }}>⚠️ {error}</div>}
+        {loading && <p style={{ color: '#6E6858', fontSize: 12, marginTop: 8 }}>Fetching papers and building roadmap — ~20s…</p>}
       </div>
 
       {r && (
@@ -89,22 +89,22 @@ export default function Roadmap() {
           {/* Phases */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {r.overview && (
-              <div style={{ background: '#161b22', border: '1px solid #21262d', borderLeft: '3px solid #58a6ff', borderRadius: 8, padding: '14px 16px', fontSize: 13, color: '#8b949e', lineHeight: 1.7 }}>
+              <div style={{ background: '#FAF6EC', border: '1px solid #E6E0D0', borderLeft: '3px solid #1E4FA0', borderRadius: 8, padding: '14px 16px', fontSize: 13, color: '#6E6858', lineHeight: 1.7 }}>
                 {r.overview}
               </div>
             )}
 
             {r.phases.map((phase, i) => (
-              <div key={i} style={{ background: '#161b22', border: '1px solid #21262d', borderLeft: `3px solid ${PC[i % 4]}`, borderRadius: 8, padding: 16 }}>
+              <div key={i} style={{ background: '#FAF6EC', border: '1px solid #E6E0D0', borderLeft: `3px solid ${PC[i % 4]}`, borderRadius: 8, padding: 16 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
                   <span style={{ background: `${PC[i % 4]}18`, color: PC[i % 4], padding: '3px 10px', borderRadius: 99, fontSize: 12, fontWeight: 700 }}>
                     Phase {i + 1}
                   </span>
-                  <span style={{ fontWeight: 600, fontSize: 14, color: '#e6edf3' }}>
+                  <span style={{ fontWeight: 600, fontSize: 14, color: '#2B3A55' }}>
                     {phase.phase.replace(/^Phase \d+[:\-\s]*/i, '')}
                   </span>
                   {phase.duration && (
-                    <span style={{ marginLeft: 'auto', fontSize: 11, color: '#8b949e', background: '#0d1117', padding: '2px 8px', borderRadius: 4 }}>
+                    <span style={{ marginLeft: 'auto', fontSize: 11, color: '#6E6858', background: '#FFFFFF', padding: '2px 8px', borderRadius: 4 }}>
                       ⏱ {phase.duration}
                     </span>
                   )}
@@ -113,9 +113,9 @@ export default function Roadmap() {
                 {/* Tasks */}
                 {phase.tasks.length > 0 && (
                   <div style={{ marginBottom: 14 }}>
-                    <div style={{ fontSize: 11, color: '#6e7681', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Tasks</div>
+                    <div style={{ fontSize: 11, color: '#8A8375', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Tasks</div>
                     {phase.tasks.map((t, j) => (
-                      <div key={j} style={{ display: 'flex', gap: 8, fontSize: 13, color: '#c9d1d9', marginBottom: 6, lineHeight: 1.55 }}>
+                      <div key={j} style={{ display: 'flex', gap: 8, fontSize: 13, color: '#44516E', marginBottom: 6, lineHeight: 1.55 }}>
                         <span style={{ color: PC[i % 4], flexShrink: 0, marginTop: 1 }}>▸</span>
                         {t}
                       </div>
@@ -126,7 +126,7 @@ export default function Roadmap() {
                 {/* Key Papers — with direct URLs from LLM */}
                 {phase.papers.length > 0 && (
                   <div>
-                    <div style={{ fontSize: 11, color: '#6e7681', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Key Papers</div>
+                    <div style={{ fontSize: 11, color: '#8A8375', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Key Papers</div>
                     {phase.papers.map((p, j) => {
                       // LLM now returns {title, url} objects; fallback to string + fuzzy match
                       const isObj  = p && typeof p === 'object'
@@ -137,21 +137,21 @@ export default function Roadmap() {
                       const url = pUrl || (matched ? safeHttpUrl(matched.url || matched.id) : null)
                       const meta = matched || (isObj ? p : null)
                       return (
-                        <div key={j} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '6px 0', borderBottom: j < phase.papers.length - 1 ? '1px solid #21262d' : 'none' }}>
-                          <span style={{ color: '#e3b341', flexShrink: 0 }}>📄</span>
+                        <div key={j} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '6px 0', borderBottom: j < phase.papers.length - 1 ? '1px solid #E6E0D0' : 'none' }}>
+                          <span style={{ color: '#B08A00', flexShrink: 0 }}>📄</span>
                           <div style={{ flex: 1 }}>
                             {url ? (
                               <a href={url} target="_blank" rel="noreferrer"
-                                style={{ fontSize: 12, color: '#58a6ff', lineHeight: 1.45, display: 'block', textDecoration: 'none' }}
+                                style={{ fontSize: 12, color: '#1E4FA0', lineHeight: 1.45, display: 'block', textDecoration: 'none' }}
                                 onMouseEnter={e => e.target.style.textDecoration = 'underline'}
                                 onMouseLeave={e => e.target.style.textDecoration = 'none'}>
                                 {pTitle}
                               </a>
                             ) : (
-                              <span style={{ fontSize: 12, color: '#8b949e', lineHeight: 1.45 }}>{pTitle}</span>
+                              <span style={{ fontSize: 12, color: '#6E6858', lineHeight: 1.45 }}>{pTitle}</span>
                             )}
                             {Array.isArray(meta?.authors) && (
-                              <div style={{ fontSize: 11, color: '#6e7681', marginTop: 2 }}>
+                              <div style={{ fontSize: 11, color: '#8A8375', marginTop: 2 }}>
                                 {meta.authors.slice(0, 2).map(toText).join(', ')}
                                 {meta.year ? ` · ${toText(meta.year)}` : ''}
                                 {meta.citations ? ` · ${toText(meta.citations)} citations` : ''}
@@ -170,10 +170,10 @@ export default function Roadmap() {
           {/* Right sidebar: skills + resources + papers list */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {r.key_skills.length > 0 && (
-              <div style={{ background: '#161b22', border: '1px solid #21262d', borderRadius: 8, padding: 14 }}>
-                <h3 style={{ fontSize: 13, marginBottom: 10, color: '#bc8cff', fontWeight: 600 }}>🎯 Key Skills</h3>
+              <div style={{ background: '#FAF6EC', border: '1px solid #E6E0D0', borderRadius: 8, padding: 14 }}>
+                <h3 style={{ fontSize: 13, marginBottom: 10, color: '#6B3FA0', fontWeight: 600 }}>🎯 Key Skills</h3>
                 {r.key_skills.map((s, i) => (
-                  <div key={i} style={{ background: 'rgba(188,140,255,.08)', border: '1px solid rgba(188,140,255,.18)', borderRadius: 5, padding: '6px 10px', fontSize: 12, color: '#c9d1d9', marginBottom: 6, lineHeight: 1.45 }}>
+                  <div key={i} style={{ background: 'rgba(188,140,255,.08)', border: '1px solid rgba(188,140,255,.18)', borderRadius: 5, padding: '6px 10px', fontSize: 12, color: '#44516E', marginBottom: 6, lineHeight: 1.45 }}>
                     {s}
                   </div>
                 ))}
@@ -181,10 +181,10 @@ export default function Roadmap() {
             )}
 
             {r.resources.length > 0 && (
-              <div style={{ background: '#161b22', border: '1px solid #21262d', borderRadius: 8, padding: 14 }}>
-                <h3 style={{ fontSize: 13, marginBottom: 10, color: '#e3b341', fontWeight: 600 }}>📚 Resources</h3>
+              <div style={{ background: '#FAF6EC', border: '1px solid #E6E0D0', borderRadius: 8, padding: 14 }}>
+                <h3 style={{ fontSize: 13, marginBottom: 10, color: '#B08A00', fontWeight: 600 }}>📚 Resources</h3>
                 {r.resources.map((res, i) => (
-                  <div key={i} style={{ fontSize: 12, color: '#8b949e', padding: '5px 0', borderBottom: i < r.resources.length - 1 ? '1px solid #21262d' : 'none', lineHeight: 1.5 }}>
+                  <div key={i} style={{ fontSize: 12, color: '#6E6858', padding: '5px 0', borderBottom: i < r.resources.length - 1 ? '1px solid #E6E0D0' : 'none', lineHeight: 1.5 }}>
                     {res}
                   </div>
                 ))}
@@ -198,19 +198,19 @@ export default function Roadmap() {
 
             {/* All fetched papers with links */}
             {result?.papers?.length > 0 && (
-              <div style={{ background: '#161b22', border: '1px solid #21262d', borderRadius: 8, padding: 14 }}>
-                <h3 style={{ fontSize: 13, marginBottom: 10, color: '#8b949e', fontWeight: 600 }}>
+              <div style={{ background: '#FAF6EC', border: '1px solid #E6E0D0', borderRadius: 8, padding: 14 }}>
+                <h3 style={{ fontSize: 13, marginBottom: 10, color: '#6E6858', fontWeight: 600 }}>
                   📑 All Papers ({result.papers.length})
                 </h3>
                 {result.papers.map((p, i) => (
-                  <div key={i} style={{ paddingBottom: 8, marginBottom: 8, borderBottom: i < result.papers.length - 1 ? '1px solid #21262d' : 'none' }}>
+                  <div key={i} style={{ paddingBottom: 8, marginBottom: 8, borderBottom: i < result.papers.length - 1 ? '1px solid #E6E0D0' : 'none' }}>
                     <a href={safeHttpUrl(p.url || p.id) || undefined} target="_blank" rel="noreferrer"
-                      style={{ fontSize: 12, color: '#58a6ff', lineHeight: 1.4, display: 'block', textDecoration: 'none' }}
+                      style={{ fontSize: 12, color: '#1E4FA0', lineHeight: 1.4, display: 'block', textDecoration: 'none' }}
                       onMouseEnter={e => e.target.style.textDecoration = 'underline'}
                       onMouseLeave={e => e.target.style.textDecoration = 'none'}>
                       {p.title}
                     </a>
-                    <div style={{ fontSize: 11, color: '#6e7681', marginTop: 2 }}>
+                    <div style={{ fontSize: 11, color: '#8A8375', marginTop: 2 }}>
                       {(p.authors || []).slice(0, 2).join(', ')}
                       {p.year ? ` · ${p.year}` : ''}
                       {p.citations ? ` · ${p.citations} cit.` : ''}

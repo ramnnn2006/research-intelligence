@@ -3,8 +3,8 @@ import { api } from '../services/api'
 import Spinner from '../components/Spinner'
 
 const LABEL_COLORS = {
-  Paper: '#8b949e', Author: '#e3b341', Repository: '#bc8cff', Topic: '#58a6ff',
-  Search: '#3fb950', Report: '#f85149',
+  Paper: '#6E6858', Author: '#B08A00', Repository: '#6B3FA0', Topic: '#1E4FA0',
+  Search: '#2E7D46', Report: '#C13B2E',
 }
 
 // endpoints timed by the latency benchmark, all read-only
@@ -17,7 +17,7 @@ const BENCH = [
   { name: '2-hop topic subgraph',      path: '/graph/export/json?scope=topic&depth=2' },
 ]
 
-const card = { background: '#161b22', border: '1px solid #21262d', borderRadius: 8, padding: 16 }
+const card = { background: '#FAF6EC', border: '1px solid #E6E0D0', borderRadius: 8, padding: 16 }
 
 function BarChart({ rows, keyField }) {
   const max = Math.max(1, ...rows.map(r => r.count))
@@ -25,14 +25,14 @@ function BarChart({ rows, keyField }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {rows.map(r => (
         <div key={r[keyField]} style={{ display: 'grid', gridTemplateColumns: '110px 1fr 50px', alignItems: 'center', gap: 10, fontSize: 12 }}>
-          <span style={{ color: '#c9d1d9', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r[keyField]}</span>
-          <div style={{ background: '#0d1117', borderRadius: 4, height: 14 }}>
-            <div style={{ width: `${(r.count / max) * 100}%`, height: '100%', borderRadius: 4, background: LABEL_COLORS[r[keyField]] || '#58a6ff' }} />
+          <span style={{ color: '#44516E', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r[keyField]}</span>
+          <div style={{ background: '#FFFFFF', borderRadius: 4, height: 14 }}>
+            <div style={{ width: `${(r.count / max) * 100}%`, height: '100%', borderRadius: 4, background: LABEL_COLORS[r[keyField]] || '#1E4FA0' }} />
           </div>
-          <span style={{ color: '#8b949e', textAlign: 'right' }}>{r.count.toLocaleString()}</span>
+          <span style={{ color: '#6E6858', textAlign: 'right' }}>{r.count.toLocaleString()}</span>
         </div>
       ))}
-      {rows.length === 0 && <div style={{ color: '#6e7681', fontSize: 12 }}>Nothing stored yet</div>}
+      {rows.length === 0 && <div style={{ color: '#8A8375', fontSize: 12 }}>Nothing stored yet</div>}
     </div>
   )
 }
@@ -84,14 +84,14 @@ export default function Analytics() {
     <div style={{ height: '100%', overflowY: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <h2 style={{ fontSize: 16 }}>📊 Graph Analytics</h2>
+        <h2 className="ri-title" style={{ fontSize: 18 }}>Graph Analytics</h2>
         {health && (
-          <span style={{ fontSize: 12, padding: '3px 10px', borderRadius: 99, background: online ? 'rgba(63,185,80,.12)' : 'rgba(248,81,73,.12)', color: online ? '#3fb950' : '#f85149' }}>
+          <span style={{ fontSize: 12, padding: '3px 10px', borderRadius: 99, background: online ? 'rgba(46,125,70,.12)' : 'rgba(193,59,46,.12)', color: online ? '#2E7D46' : '#C13B2E' }}>
             Neo4j {health.status}{health.latency_ms != null && ` · ${health.latency_ms} ms`}
           </span>
         )}
         <button onClick={load} disabled={loading}
-          style={{ marginLeft: 'auto', background: 'none', border: '1px solid #30363d', borderRadius: 6, color: '#8b949e', padding: '5px 12px', fontSize: 12, cursor: 'pointer' }}>
+          style={{ marginLeft: 'auto', background: 'none', border: '1px solid #D9D2BE', borderRadius: 6, color: '#6E6858', padding: '5px 12px', fontSize: 12, cursor: 'pointer' }}>
           {loading ? <><Spinner />Loading…</> : '↻ Refresh'}
         </button>
       </div>
@@ -100,7 +100,7 @@ export default function Analytics() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12 }}>
         {cards.map(([label, value]) => (
           <div key={label} style={card}>
-            <div style={{ color: '#8b949e', fontSize: 12, marginBottom: 6 }}>{label}</div>
+            <div style={{ color: '#6E6858', fontSize: 12, marginBottom: 6 }}>{label}</div>
             <div style={{ fontSize: 22, fontWeight: 600 }}>{value == null ? '–' : value.toLocaleString()}</div>
           </div>
         ))}
@@ -123,32 +123,32 @@ export default function Analytics() {
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
           <h3 style={{ fontSize: 13 }}>Query latency benchmark</h3>
           <button onClick={runBenchmark} disabled={benchRunning}
-            style={{ marginLeft: 'auto', background: benchRunning ? '#21262d' : '#58a6ff', color: benchRunning ? '#8b949e' : '#000', border: 'none', borderRadius: 6, padding: '5px 14px', fontSize: 12, fontWeight: 600, cursor: benchRunning ? 'not-allowed' : 'pointer' }}>
+            style={{ marginLeft: 'auto', background: benchRunning ? '#E6E0D0' : '#1E4FA0', color: benchRunning ? '#6E6858' : '#FFFFFF', border: 'none', borderRadius: 6, padding: '5px 14px', fontSize: 12, fontWeight: 600, cursor: benchRunning ? 'not-allowed' : 'pointer' }}>
             {benchRunning ? <><Spinner />Running…</> : 'Run benchmark'}
           </button>
         </div>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
           <thead>
-            <tr style={{ color: '#8b949e', textAlign: 'left' }}>
-              <th style={{ padding: '6px 8px', borderBottom: '1px solid #21262d' }}>Query</th>
-              <th style={{ padding: '6px 8px', borderBottom: '1px solid #21262d' }}>Endpoint</th>
-              <th style={{ padding: '6px 8px', borderBottom: '1px solid #21262d', textAlign: 'right' }}>Rows</th>
-              <th style={{ padding: '6px 8px', borderBottom: '1px solid #21262d', textAlign: 'right' }}>Latency</th>
+            <tr style={{ color: '#6E6858', textAlign: 'left' }}>
+              <th style={{ padding: '6px 8px', borderBottom: '1px solid #E6E0D0' }}>Query</th>
+              <th style={{ padding: '6px 8px', borderBottom: '1px solid #E6E0D0' }}>Endpoint</th>
+              <th style={{ padding: '6px 8px', borderBottom: '1px solid #E6E0D0', textAlign: 'right' }}>Rows</th>
+              <th style={{ padding: '6px 8px', borderBottom: '1px solid #E6E0D0', textAlign: 'right' }}>Latency</th>
             </tr>
           </thead>
           <tbody>
             {bench.map(b => (
               <tr key={b.path}>
-                <td style={{ padding: '6px 8px', borderBottom: '1px solid #161b22' }}>{b.name}</td>
-                <td style={{ padding: '6px 8px', borderBottom: '1px solid #161b22', color: '#6e7681', fontFamily: 'monospace' }}>{b.path.split('?')[0]}</td>
-                <td style={{ padding: '6px 8px', borderBottom: '1px solid #161b22', textAlign: 'right' }}>{b.ok ? b.rows : 'error'}</td>
-                <td style={{ padding: '6px 8px', borderBottom: '1px solid #161b22', textAlign: 'right', color: b.ms > 500 ? '#e3b341' : '#3fb950' }}>{b.ms.toFixed(1)} ms</td>
+                <td style={{ padding: '6px 8px', borderBottom: '1px solid #FAF6EC' }}>{b.name}</td>
+                <td style={{ padding: '6px 8px', borderBottom: '1px solid #FAF6EC', color: '#8A8375', fontFamily: 'monospace' }}>{b.path.split('?')[0]}</td>
+                <td style={{ padding: '6px 8px', borderBottom: '1px solid #FAF6EC', textAlign: 'right' }}>{b.ok ? b.rows : 'error'}</td>
+                <td style={{ padding: '6px 8px', borderBottom: '1px solid #FAF6EC', textAlign: 'right', color: b.ms > 500 ? '#B08A00' : '#2E7D46' }}>{b.ms.toFixed(1)} ms</td>
               </tr>
             ))}
           </tbody>
         </table>
         {bench.length === 0 && !benchRunning && (
-          <div style={{ color: '#6e7681', fontSize: 12, padding: '10px 8px' }}>Times each graph query endpoint once from the browser, network round trip included.</div>
+          <div style={{ color: '#8A8375', fontSize: 12, padding: '10px 8px' }}>Times each graph query endpoint once from the browser, network round trip included.</div>
         )}
       </div>
 
@@ -157,7 +157,7 @@ export default function Analytics() {
         <div style={card}>
           <h3 style={{ fontSize: 13, marginBottom: 10 }}>Index advisor</h3>
           {health.index_advice.map((a, i) => (
-            <div key={i} style={{ fontFamily: 'monospace', fontSize: 12, color: '#c9d1d9', padding: '4px 0' }}>{a.suggestion}</div>
+            <div key={i} style={{ fontFamily: 'monospace', fontSize: 12, color: '#44516E', padding: '4px 0' }}>{a.suggestion}</div>
           ))}
         </div>
       )}

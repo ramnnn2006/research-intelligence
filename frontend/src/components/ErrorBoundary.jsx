@@ -19,11 +19,11 @@ export default class ErrorBoundary extends React.Component {
     if (!this.state.error) return this.props.children
     return (
       <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-        <div style={{ background: '#161b22', border: '1px solid #f85149', borderRadius: 8, padding: 20, maxWidth: 520, fontSize: 13 }}>
-          <div style={{ color: '#f85149', fontWeight: 600, marginBottom: 8 }}>⚠️ This tab ran into an error</div>
-          <div style={{ color: '#8b949e', marginBottom: 14, wordBreak: 'break-word' }}>{String(this.state.error?.message || this.state.error)}</div>
+        <div style={{ background: '#FAF6EC', border: '1px solid #C13B2E', borderRadius: 8, padding: 20, maxWidth: 520, fontSize: 13 }}>
+          <div style={{ color: '#C13B2E', fontWeight: 600, marginBottom: 8 }}>⚠️ This tab ran into an error</div>
+          <div style={{ color: '#6E6858', marginBottom: 14, wordBreak: 'break-word' }}>{String(this.state.error?.message || this.state.error)}</div>
           <button onClick={() => this.setState({ error: null })}
-            style={{ background: '#58a6ff', color: '#000', border: 'none', borderRadius: 6, padding: '6px 14px', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>
+            style={{ background: '#1E4FA0', color: '#FFFFFF', border: 'none', borderRadius: 6, padding: '6px 14px', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>
             Try again
           </button>
         </div>

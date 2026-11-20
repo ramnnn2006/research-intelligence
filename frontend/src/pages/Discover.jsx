@@ -137,7 +137,7 @@ export default function Discover() {
     <div style={{ height: '100%', overflowY: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
 
       {/* Search Header Container */}
-      <div style={{ background: '#161b22', border: '1px solid #21262d', borderRadius: 8, padding: 20, flexShrink: 0 }}>
+      <div style={{ background: '#FAF6EC', border: '1px solid #E6E0D0', borderRadius: 8, padding: 20, flexShrink: 0 }}>
         
         {/* Mode Toggle Pills */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
@@ -145,9 +145,9 @@ export default function Discover() {
             type="button"
             onClick={() => setSearchMode('topic')}
             style={{
-              background: searchMode === 'topic' ? '#1f6feb' : '#21262d',
-              border: `1px solid ${searchMode === 'topic' ? '#388bfd' : '#30363d'}`,
-              color: searchMode === 'topic' ? '#ffffff' : '#8b949e',
+              background: searchMode === 'topic' ? '#16397A' : '#E6E0D0',
+              border: `1px solid ${searchMode === 'topic' ? '#1E4FA0' : '#D9D2BE'}`,
+              color: searchMode === 'topic' ? '#ffffff' : '#6E6858',
               padding: '6px 16px',
               borderRadius: 20,
               fontSize: 13,
@@ -166,9 +166,9 @@ export default function Discover() {
             type="button"
             onClick={() => setSearchMode('author')}
             style={{
-              background: searchMode === 'author' ? '#8957e5' : '#21262d',
-              border: `1px solid ${searchMode === 'author' ? '#a371f7' : '#30363d'}`,
-              color: searchMode === 'author' ? '#ffffff' : '#8b949e',
+              background: searchMode === 'author' ? '#6B3FA0' : '#E6E0D0',
+              border: `1px solid ${searchMode === 'author' ? '#6B3FA0' : '#D9D2BE'}`,
+              color: searchMode === 'author' ? '#ffffff' : '#6E6858',
               padding: '6px 16px',
               borderRadius: 20,
               fontSize: 13,
@@ -187,8 +187,8 @@ export default function Discover() {
         {/* ── Mode A: Topic Search ────────────────────────────────────────── */}
         {searchMode === 'topic' && (
           <div>
-            <h2 style={{ fontSize: 16, marginBottom: 4 }}>🔍 Research Paper Discovery</h2>
-            <p style={{ color: '#8b949e', fontSize: 13, marginBottom: 14 }}>
+            <h2 className="ri-title" style={{ fontSize: 18, marginBottom: 4 }}>Research Paper Discovery</h2>
+            <p style={{ color: '#6E6858', fontSize: 13, marginBottom: 14 }}>
               Search papers from ArXiv &amp; Semantic Scholar, view citations, and explore GitHub, HF models &amp; datasets.
             </p>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -196,35 +196,35 @@ export default function Discover() {
                 value={query} onChange={e => setQuery(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && searchTopic()}
                 placeholder="e.g. LoRA fine-tuning PEFT, deepseek reasoning, graph neural networks"
-                style={{ flex: 1, minWidth: 260, background: '#0d1117', border: '1px solid #30363d', borderRadius: 6, color: '#e6edf3', padding: '8px 12px', fontSize: 14, outline: 'none' }}
-                onFocus={e => e.target.style.borderColor = '#58a6ff'}
-                onBlur={e => e.target.style.borderColor = '#30363d'}
+                style={{ flex: 1, minWidth: 260, background: '#FFFFFF', border: '1px solid #D9D2BE', borderRadius: 6, color: '#2B3A55', padding: '8px 12px', fontSize: 14, outline: 'none' }}
+                onFocus={e => e.target.style.borderColor = '#1E4FA0'}
+                onBlur={e => e.target.style.borderColor = '#D9D2BE'}
               />
-              <div style={{ display: 'flex', gap: 14, fontSize: 13, color: '#8b949e' }}>
+              <div style={{ display: 'flex', gap: 14, fontSize: 13, color: '#6E6858' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer' }}>
-                  <input type="checkbox" checked={arxiv} onChange={e => setArxiv(e.target.checked)} style={{ accentColor: '#58a6ff' }} /> ArXiv
+                  <input type="checkbox" checked={arxiv} onChange={e => setArxiv(e.target.checked)} style={{ accentColor: '#1E4FA0' }} /> ArXiv
                 </label>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer' }}>
-                  <input type="checkbox" checked={scholar} onChange={e => setScholar(e.target.checked)} style={{ accentColor: '#58a6ff' }} /> Scholar
+                  <input type="checkbox" checked={scholar} onChange={e => setScholar(e.target.checked)} style={{ accentColor: '#1E4FA0' }} /> Scholar
                 </label>
-                <span style={{ color: '#3fb950', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
-                  🔧 GitHub <span style={{ color: '#6e7681' }}>(auto)</span>
+                <span style={{ color: '#2E7D46', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  🔧 GitHub <span style={{ color: '#8A8375' }}>(auto)</span>
                 </span>
               </div>
               <button onClick={searchTopic} disabled={loading || !query.trim()}
-                style={{ background: loading ? '#21262d' : '#58a6ff', color: loading ? '#8b949e' : '#000', border: 'none', borderRadius: 6, padding: '8px 22px', fontWeight: 600, fontSize: 14, cursor: loading ? 'not-allowed' : 'pointer' }}>
+                style={{ background: loading ? '#E6E0D0' : '#F4D90C', color: loading ? '#6E6858' : '#16397A', border: 'none', borderRadius: 6, padding: '8px 22px', fontWeight: 600, fontSize: 14, cursor: loading ? 'not-allowed' : 'pointer' }}>
                 {loading ? <><Spinner />Searching…</> : 'Search'}
               </button>
             </div>
-            {error && <div style={{ marginTop: 10, color: '#f85149', fontSize: 13, background: 'rgba(248,81,73,.08)', padding: '8px 12px', borderRadius: 6 }}>⚠️ {error}</div>}
+            {error && <div style={{ marginTop: 10, color: '#C13B2E', fontSize: 13, background: 'rgba(193,59,46,.08)', padding: '8px 12px', borderRadius: 6 }}>⚠️ {error}</div>}
           </div>
         )}
 
         {/* ── Mode B: Author Search ───────────────────────────────────────── */}
         {searchMode === 'author' && (
           <div>
-            <h2 style={{ fontSize: 16, marginBottom: 4, color: '#d2a8ff' }}>👤 Author &amp; Researcher Portfolio Search</h2>
-            <p style={{ color: '#8b949e', fontSize: 13, marginBottom: 12 }}>
+            <h2 className="ri-title" style={{ fontSize: 18, marginBottom: 4 }}>Author &amp; Researcher Portfolio Search</h2>
+            <p style={{ color: '#6E6858', fontSize: 13, marginBottom: 12 }}>
               Find all research papers authored by a researcher, their citation metrics, h-index, affiliations, and co-authors.
             </p>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -232,19 +232,19 @@ export default function Discover() {
                 value={authorQuery} onChange={e => setAuthorQuery(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && searchAuthor()}
                 placeholder="e.g. Geoffrey Hinton, Yann LeCun, Ashish Vaswani, Yoshua Bengio, Fei-Fei Li"
-                style={{ flex: 1, minWidth: 260, background: '#0d1117', border: '1px solid #30363d', borderRadius: 6, color: '#e6edf3', padding: '8px 12px', fontSize: 14, outline: 'none' }}
-                onFocus={e => e.target.style.borderColor = '#bc8cff'}
-                onBlur={e => e.target.style.borderColor = '#30363d'}
+                style={{ flex: 1, minWidth: 260, background: '#FFFFFF', border: '1px solid #D9D2BE', borderRadius: 6, color: '#2B3A55', padding: '8px 12px', fontSize: 14, outline: 'none' }}
+                onFocus={e => e.target.style.borderColor = '#6B3FA0'}
+                onBlur={e => e.target.style.borderColor = '#D9D2BE'}
               />
               <button onClick={() => searchAuthor()} disabled={authorLoading || !authorQuery.trim()}
-                style={{ background: authorLoading ? '#21262d' : '#8957e5', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 22px', fontWeight: 600, fontSize: 14, cursor: authorLoading ? 'not-allowed' : 'pointer' }}>
+                style={{ background: authorLoading ? '#E6E0D0' : '#6B3FA0', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 22px', fontWeight: 600, fontSize: 14, cursor: authorLoading ? 'not-allowed' : 'pointer' }}>
                 {authorLoading ? <><Spinner />Searching Author…</> : 'Search Author'}
               </button>
             </div>
 
             {/* Quick Author Suggestion Chips */}
             <div style={{ display: 'flex', gap: 8, marginTop: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 12, color: '#6e7681' }}>Try:</span>
+              <span style={{ fontSize: 12, color: '#8A8375' }}>Try:</span>
               {['Ashish Vaswani', 'Geoffrey Hinton', 'Yann LeCun', 'Andrew Ng', 'Yoshua Bengio'].map((name, i) => (
                 <button
                   key={i}
@@ -252,22 +252,22 @@ export default function Discover() {
                   onClick={() => searchAuthor(name)}
                   style={{
                     background: 'none',
-                    border: '1px solid #30363d',
+                    border: '1px solid #D9D2BE',
                     borderRadius: 14,
-                    color: '#8b949e',
+                    color: '#6E6858',
                     fontSize: 11,
                     padding: '2px 10px',
                     cursor: 'pointer'
                   }}
-                  onMouseEnter={e => { e.target.style.color = '#c9d1d9'; e.target.style.borderColor = '#58a6ff' }}
-                  onMouseLeave={e => { e.target.style.color = '#8b949e'; e.target.style.borderColor = '#30363d' }}
+                  onMouseEnter={e => { e.target.style.color = '#44516E'; e.target.style.borderColor = '#1E4FA0' }}
+                  onMouseLeave={e => { e.target.style.color = '#6E6858'; e.target.style.borderColor = '#D9D2BE' }}
                 >
                   {name}
                 </button>
               ))}
             </div>
 
-            {authorError && <div style={{ marginTop: 10, color: '#f85149', fontSize: 13, background: 'rgba(248,81,73,.08)', padding: '8px 12px', borderRadius: 6 }}>⚠️ {authorError}</div>}
+            {authorError && <div style={{ marginTop: 10, color: '#C13B2E', fontSize: 13, background: 'rgba(193,59,46,.08)', padding: '8px 12px', borderRadius: 6 }}>⚠️ {authorError}</div>}
           </div>
         )}
 
@@ -279,52 +279,52 @@ export default function Discover() {
           {/* Stats + tab bar */}
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', flexShrink: 0 }}>
             <button onClick={() => setActiveTab('papers')}
-              style={{ background: activeTab === 'papers' ? '#21262d' : 'none', border: `1px solid ${activeTab === 'papers' ? '#58a6ff' : '#21262d'}`, borderRadius: 6, color: activeTab === 'papers' ? '#58a6ff' : '#8b949e', padding: '5px 14px', fontSize: 13, cursor: 'pointer', fontWeight: 500 }}>
+              style={{ background: activeTab === 'papers' ? '#E6E0D0' : 'none', border: `1px solid ${activeTab === 'papers' ? '#1E4FA0' : '#E6E0D0'}`, borderRadius: 6, color: activeTab === 'papers' ? '#1E4FA0' : '#6E6858', padding: '5px 14px', fontSize: 13, cursor: 'pointer', fontWeight: 500 }}>
               📄 Papers ({result.total})
             </button>
             <button onClick={() => setActiveTab('models')}
-              style={{ background: activeTab === 'models' ? '#21262d' : 'none', border: `1px solid ${activeTab === 'models' ? '#ff9d00' : '#21262d'}`, borderRadius: 6, color: activeTab === 'models' ? '#ff9d00' : '#8b949e', padding: '5px 14px', fontSize: 13, cursor: 'pointer', fontWeight: 500 }}>
+              style={{ background: activeTab === 'models' ? '#E6E0D0' : 'none', border: `1px solid ${activeTab === 'models' ? '#BF6210' : '#E6E0D0'}`, borderRadius: 6, color: activeTab === 'models' ? '#BF6210' : '#6E6858', padding: '5px 14px', fontSize: 13, cursor: 'pointer', fontWeight: 500 }}>
               🤗 HF Models ({result.models?.length || 0})
             </button>
             <button onClick={() => setActiveTab('datasets')}
-              style={{ background: activeTab === 'datasets' ? '#21262d' : 'none', border: `1px solid ${activeTab === 'datasets' ? '#00b4d8' : '#21262d'}`, borderRadius: 6, color: activeTab === 'datasets' ? '#00b4d8' : '#8b949e', padding: '5px 14px', fontSize: 13, cursor: 'pointer', fontWeight: 500 }}>
+              style={{ background: activeTab === 'datasets' ? '#E6E0D0' : 'none', border: `1px solid ${activeTab === 'datasets' ? '#0E7490' : '#E6E0D0'}`, borderRadius: 6, color: activeTab === 'datasets' ? '#0E7490' : '#6E6858', padding: '5px 14px', fontSize: 13, cursor: 'pointer', fontWeight: 500 }}>
               📊 Datasets ({result.datasets?.length || 0})
             </button>
             <button onClick={() => setActiveTab('repos')}
-              style={{ background: activeTab === 'repos' ? '#21262d' : 'none', border: `1px solid ${activeTab === 'repos' ? '#bc8cff' : '#21262d'}`, borderRadius: 6, color: activeTab === 'repos' ? '#bc8cff' : '#8b949e', padding: '5px 14px', fontSize: 13, cursor: 'pointer', fontWeight: 500 }}>
+              style={{ background: activeTab === 'repos' ? '#E6E0D0' : 'none', border: `1px solid ${activeTab === 'repos' ? '#6B3FA0' : '#E6E0D0'}`, borderRadius: 6, color: activeTab === 'repos' ? '#6B3FA0' : '#6E6858', padding: '5px 14px', fontSize: 13, cursor: 'pointer', fontWeight: 500 }}>
               🔧 GitHub Repos ({result.repos?.length || 0})
             </button>
-            <div style={{ background: '#161b22', border: '1px solid #21262d', borderRadius: 6, padding: '5px 12px', fontSize: 12, color: '#6e7681' }}>
+            <div style={{ background: '#FAF6EC', border: '1px solid #E6E0D0', borderRadius: 6, padding: '5px 12px', fontSize: 12, color: '#8A8375' }}>
               🧠 {result.rag_count} in RAG
             </div>
             {result.graph_source && (
               <div style={{
-                background: result.graph_source === 'neo4j' ? 'rgba(63,185,80,0.1)' : 'rgba(88,166,255,0.1)',
-                border: `1px solid ${result.graph_source === 'neo4j' ? 'rgba(63,185,80,0.3)' : 'rgba(88,166,255,0.3)'}`,
+                background: result.graph_source === 'neo4j' ? 'rgba(46,125,70,0.1)' : 'rgba(30,79,160,0.1)',
+                border: `1px solid ${result.graph_source === 'neo4j' ? 'rgba(46,125,70,0.3)' : 'rgba(30,79,160,0.3)'}`,
                 borderRadius: 6, padding: '5px 12px', fontSize: 12,
-                color: result.graph_source === 'neo4j' ? '#3fb950' : '#58a6ff'
+                color: result.graph_source === 'neo4j' ? '#2E7D46' : '#1E4FA0'
               }}>
                 {result.graph_source === 'neo4j' ? '🌿 Neo4j Graph' : '📊 NetworkX Graph'}
               </div>
             )}
             <button onClick={() => setShowGraph(p => !p)}
-              style={{ background: 'none', border: '1px solid #30363d', borderRadius: 6, color: '#8b949e', padding: '5px 12px', fontSize: 12, cursor: 'pointer', marginLeft: 'auto' }}>
+              style={{ background: 'none', border: '1px solid #D9D2BE', borderRadius: 6, color: '#6E6858', padding: '5px 12px', fontSize: 12, cursor: 'pointer', marginLeft: 'auto' }}>
               {showGraph ? '⊟ Hide Graph' : '⊞ Show Graph'}
             </button>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: showGraph && result.graph ? '1fr 400px' : '1fr', gap: 16, alignItems: 'start' }}>
+          <div className="ri-results-grid" style={{ display: 'grid', gridTemplateColumns: showGraph && result.graph ? '1fr 400px' : '1fr', gap: 16, alignItems: 'start' }}>
 
             {/* Main content */}
             <div>
               {/* Papers tab */}
               {activeTab === 'papers' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <div style={{ color: '#8b949e', fontSize: 12, padding: '0 4px' }}>
+                  <div style={{ color: '#6E6858', fontSize: 12, padding: '0 4px' }}>
                     💡 <i>Tip: Click any paper or &ldquo;Citations &amp; Network&rdquo; to view incoming citations &amp; references. Click any author to view their full portfolio.</i>
                   </div>
                   {!result.papers?.length
-                    ? <div style={{ color: '#6e7681', fontSize: 13, padding: 20, textAlign: 'center' }}>No papers found. Try different keywords.</div>
+                    ? <div style={{ color: '#8A8375', fontSize: 13, padding: 20, textAlign: 'center' }}>No papers found. Try different keywords.</div>
                     : result.papers.map((p, i) => (
                       <PaperCard
                         key={i}
@@ -341,7 +341,7 @@ export default function Discover() {
               {activeTab === 'models' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {!result.models?.length ? (
-                    <div style={{ color: '#6e7681', fontSize: 13, padding: 20, textAlign: 'center' }}>
+                    <div style={{ color: '#8A8375', fontSize: 13, padding: 20, textAlign: 'center' }}>
                       No Hugging Face models found matching this topic.
                     </div>
                   ) : (
@@ -354,7 +354,7 @@ export default function Discover() {
               {activeTab === 'datasets' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {!result.datasets?.length ? (
-                    <div style={{ color: '#6e7681', fontSize: 13, padding: 20, textAlign: 'center' }}>
+                    <div style={{ color: '#8A8375', fontSize: 13, padding: 20, textAlign: 'center' }}>
                       No Hugging Face benchmark datasets found matching this topic.
                     </div>
                   ) : (
@@ -371,18 +371,18 @@ export default function Discover() {
 
             {/* Graph panel */}
             {showGraph && result.graph && (
-              <div style={{ background: '#161b22', border: '1px solid #21262d', borderRadius: 8, padding: 16, position: 'sticky', top: 0 }}>
+              <div style={{ background: '#FAF6EC', border: '1px solid #E6E0D0', borderRadius: 8, padding: 16, position: 'sticky', top: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
                   <h3 style={{ fontSize: 13, fontWeight: 600 }}>{subgraph ? `Neo4j Subgraph (${subgraph.nodes?.length || 0} nodes)` : 'Knowledge Graph'}</h3>
                   {graphLoading && <Spinner />}
                   {subgraph && (
                     <button onClick={resetSubgraph}
-                      style={{ background: 'none', border: 'none', color: '#6e7681', fontSize: 11, cursor: 'pointer', padding: 0 }}>
+                      style={{ background: 'none', border: 'none', color: '#8A8375', fontSize: 11, cursor: 'pointer', padding: 0 }}>
                       reset
                     </button>
                   )}
                   <button onClick={() => setShowExport(true)}
-                    style={{ marginLeft: 'auto', background: 'none', border: '1px solid #30363d', borderRadius: 6, color: '#8b949e', padding: '3px 10px', fontSize: 11, cursor: 'pointer' }}>
+                    style={{ marginLeft: 'auto', background: 'none', border: '1px solid #D9D2BE', borderRadius: 6, color: '#6E6858', padding: '3px 10px', fontSize: 11, cursor: 'pointer' }}>
                     ⤓ Export Subgraph
                   </button>
                 </div>
@@ -399,8 +399,8 @@ export default function Discover() {
 
           {/* Author Profile Hero Card */}
           <div style={{
-            background: 'linear-gradient(180deg, #161b22 0%, #0d1117 100%)',
-            border: '1px solid #30363d',
+            background: 'linear-gradient(180deg, #FAF6EC 0%, #FFFFFF 100%)',
+            border: '1px solid #D9D2BE',
             borderRadius: 10,
             padding: 20,
             display: 'flex',
@@ -413,20 +413,20 @@ export default function Discover() {
                   width: 52,
                   height: 52,
                   borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #8957e5 0%, #e3b341 100%)',
+                  background: 'linear-gradient(135deg, #6B3FA0 0%, #B08A00 100%)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   fontSize: 24,
-                  boxShadow: '0 4px 12px rgba(137,87,229,0.3)'
+                  boxShadow: '0 4px 12px rgba(107,63,160,0.3)'
                 }}>
                   👤
                 </div>
                 <div>
-                  <h2 style={{ fontSize: 20, fontWeight: 700, color: '#f0f6fc', margin: '0 0 4px 0' }}>
+                  <h2 style={{ fontSize: 20, fontWeight: 700, color: '#16397A', margin: '0 0 4px 0' }}>
                     {toText(authorInfo.name)}
                   </h2>
-                  <div style={{ fontSize: 13, color: '#8b949e', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  <div style={{ fontSize: 13, color: '#6E6858', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     {authorAffiliations.length > 0 ? (
                       authorAffiliations.map((aff, i) => (
                         <span key={i}>🏛️ {aff}{i < authorAffiliations.length - 1 ? ' ·' : ''}</span>
@@ -440,21 +440,21 @@ export default function Discover() {
 
               {/* Badges / Metrics */}
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <div style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 8, padding: '6px 14px', textAlign: 'center' }}>
-                  <div style={{ fontSize: 11, color: '#8b949e', textTransform: 'uppercase', fontWeight: 600 }}>Total Works</div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: '#58a6ff' }}>
+                <div style={{ background: '#FAF6EC', border: '1px solid #D9D2BE', borderRadius: 8, padding: '6px 14px', textAlign: 'center' }}>
+                  <div style={{ fontSize: 11, color: '#6E6858', textTransform: 'uppercase', fontWeight: 600 }}>Total Works</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: '#1E4FA0' }}>
                     {authorResult.author?.works_count || authorResult.total_papers || 0}
                   </div>
                 </div>
-                <div style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 8, padding: '6px 14px', textAlign: 'center' }}>
-                  <div style={{ fontSize: 11, color: '#8b949e', textTransform: 'uppercase', fontWeight: 600 }}>Citations</div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: '#f85149' }}>
+                <div style={{ background: '#FAF6EC', border: '1px solid #D9D2BE', borderRadius: 8, padding: '6px 14px', textAlign: 'center' }}>
+                  <div style={{ fontSize: 11, color: '#6E6858', textTransform: 'uppercase', fontWeight: 600 }}>Citations</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: '#C13B2E' }}>
                     {(Number(authorInfo.citation_count) || 0).toLocaleString()}
                   </div>
                 </div>
-                <div style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 8, padding: '6px 14px', textAlign: 'center' }}>
-                  <div style={{ fontSize: 11, color: '#8b949e', textTransform: 'uppercase', fontWeight: 600 }}>h-index</div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: '#e3b341' }}>
+                <div style={{ background: '#FAF6EC', border: '1px solid #D9D2BE', borderRadius: 8, padding: '6px 14px', textAlign: 'center' }}>
+                  <div style={{ fontSize: 11, color: '#6E6858', textTransform: 'uppercase', fontWeight: 600 }}>h-index</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: '#B08A00' }}>
                     {authorResult.author?.h_index || 'N/A'}
                   </div>
                 </div>
@@ -468,7 +468,7 @@ export default function Discover() {
                       border: '1px solid rgba(166,226,46,0.3)',
                       borderRadius: 8,
                       padding: '6px 12px',
-                      color: '#a6e22e',
+                      color: '#5A8A00',
                       fontSize: 12,
                       textDecoration: 'none',
                       display: 'flex',
@@ -488,10 +488,10 @@ export default function Discover() {
             <button
               onClick={() => setAuthorTab('papers')}
               style={{
-                background: authorTab === 'papers' ? '#21262d' : 'none',
-                border: `1px solid ${authorTab === 'papers' ? '#8957e5' : '#21262d'}`,
+                background: authorTab === 'papers' ? '#E6E0D0' : 'none',
+                border: `1px solid ${authorTab === 'papers' ? '#6B3FA0' : '#E6E0D0'}`,
                 borderRadius: 6,
-                color: authorTab === 'papers' ? '#d2a8ff' : '#8b949e',
+                color: authorTab === 'papers' ? '#7A4FB8' : '#6E6858',
                 padding: '6px 16px',
                 fontSize: 13,
                 cursor: 'pointer',
@@ -503,10 +503,10 @@ export default function Discover() {
             <button
               onClick={() => setAuthorTab('coauthors')}
               style={{
-                background: authorTab === 'coauthors' ? '#21262d' : 'none',
-                border: `1px solid ${authorTab === 'coauthors' ? '#e3b341' : '#21262d'}`,
+                background: authorTab === 'coauthors' ? '#E6E0D0' : 'none',
+                border: `1px solid ${authorTab === 'coauthors' ? '#B08A00' : '#E6E0D0'}`,
                 borderRadius: 6,
-                color: authorTab === 'coauthors' ? '#e3b341' : '#8b949e',
+                color: authorTab === 'coauthors' ? '#B08A00' : '#6E6858',
                 padding: '6px 16px',
                 fontSize: 13,
                 cursor: 'pointer',
@@ -518,10 +518,10 @@ export default function Discover() {
             <button
               onClick={() => setAuthorTab('graph')}
               style={{
-                background: authorTab === 'graph' ? '#21262d' : 'none',
-                border: `1px solid ${authorTab === 'graph' ? '#58a6ff' : '#21262d'}`,
+                background: authorTab === 'graph' ? '#E6E0D0' : 'none',
+                border: `1px solid ${authorTab === 'graph' ? '#1E4FA0' : '#E6E0D0'}`,
                 borderRadius: 6,
-                color: authorTab === 'graph' ? '#58a6ff' : '#8b949e',
+                color: authorTab === 'graph' ? '#1E4FA0' : '#6E6858',
                 padding: '6px 16px',
                 fontSize: 13,
                 cursor: 'pointer',
@@ -532,14 +532,14 @@ export default function Discover() {
             </button>
 
             {authorTab === 'papers' && (
-              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#8b949e' }}>
+              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#6E6858' }}>
                 <span>Sort by:</span>
                 <button
                   onClick={() => setAuthorSort('citations')}
                   style={{
-                    background: authorSort === 'citations' ? '#21262d' : 'none',
-                    border: '1px solid #30363d',
-                    color: authorSort === 'citations' ? '#58a6ff' : '#8b949e',
+                    background: authorSort === 'citations' ? '#E6E0D0' : 'none',
+                    border: '1px solid #D9D2BE',
+                    color: authorSort === 'citations' ? '#1E4FA0' : '#6E6858',
                     borderRadius: 4,
                     padding: '2px 8px',
                     fontSize: 11,
@@ -551,9 +551,9 @@ export default function Discover() {
                 <button
                   onClick={() => setAuthorSort('year')}
                   style={{
-                    background: authorSort === 'year' ? '#21262d' : 'none',
-                    border: '1px solid #30363d',
-                    color: authorSort === 'year' ? '#58a6ff' : '#8b949e',
+                    background: authorSort === 'year' ? '#E6E0D0' : 'none',
+                    border: '1px solid #D9D2BE',
+                    color: authorSort === 'year' ? '#1E4FA0' : '#6E6858',
                     borderRadius: 4,
                     padding: '2px 8px',
                     fontSize: 11,
@@ -570,7 +570,7 @@ export default function Discover() {
           {authorTab === 'papers' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {sortedAuthorPapers.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: 40, color: '#6e7681' }}>
+                <div style={{ textAlign: 'center', padding: 40, color: '#8A8375' }}>
                   No papers found for this author.
                 </div>
               ) : (
@@ -593,8 +593,8 @@ export default function Discover() {
                 <div
                   key={i}
                   style={{
-                    background: '#161b22',
-                    border: '1px solid #21262d',
+                    background: '#FAF6EC',
+                    border: '1px solid #E6E0D0',
                     borderRadius: 8,
                     padding: 14,
                     display: 'flex',
@@ -603,19 +603,19 @@ export default function Discover() {
                   }}
                 >
                   <div>
-                    <div style={{ fontWeight: 600, color: '#e6edf3', fontSize: 14 }}>
+                    <div style={{ fontWeight: 600, color: '#2B3A55', fontSize: 14 }}>
                       👤 {toText(ca.name)}
                     </div>
-                    <div style={{ fontSize: 12, color: '#8b949e', marginTop: 2 }}>
+                    <div style={{ fontSize: 12, color: '#6E6858', marginTop: 2 }}>
                       {toText(ca.collaborations)} joint publications
                     </div>
                   </div>
                   <button
                     onClick={() => handleAuthorClick(ca.name)}
                     style={{
-                      background: 'rgba(137,87,229,0.15)',
-                      border: '1px solid rgba(137,87,229,0.3)',
-                      color: '#d2a8ff',
+                      background: 'rgba(107,63,160,0.15)',
+                      border: '1px solid rgba(107,63,160,0.3)',
+                      color: '#7A4FB8',
                       borderRadius: 6,
                       padding: '4px 10px',
                       fontSize: 12,
@@ -632,25 +632,25 @@ export default function Discover() {
 
           {/* Author Tab 3: Collaboration Graph */}
           {authorTab === 'graph' && (
-            <div style={{ background: '#161b22', border: '1px solid #21262d', borderRadius: 8, padding: 16 }}>
-              <div style={{ display: 'flex', gap: 16, marginBottom: 10, fontSize: 12, color: '#8b949e' }}>
+            <div style={{ background: '#FAF6EC', border: '1px solid #E6E0D0', borderRadius: 8, padding: 16 }}>
+              <div style={{ display: 'flex', gap: 16, marginBottom: 10, fontSize: 12, color: '#6E6858' }}>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#e3b341', boxShadow: '0 0 0 2px #ffffff' }}></span>
+                  <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#B08A00', boxShadow: '0 0 0 2px #ffffff' }}></span>
                   Researcher (Gold, white ring)
                 </span>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#8b949e' }}></span>
+                  <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#6E6858' }}></span>
                   Authored Papers (Gray)
                 </span>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#e3b341' }}></span>
+                  <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#B08A00' }}></span>
                   Co-Authors (Gold)
                 </span>
               </div>
               {authorResult.graph?.nodes?.length > 1 ? (
                 <Graph data={authorResult.graph} height={500} />
               ) : (
-                <div style={{ textAlign: 'center', padding: 40, color: '#6e7681' }}>
+                <div style={{ textAlign: 'center', padding: 40, color: '#8A8375' }}>
                   Not enough nodes to build author collaboration graph.
                 </div>
               )}
@@ -665,12 +665,12 @@ export default function Discover() {
         <div onClick={() => setShowExport(false)}
           style={{ position: 'fixed', inset: 0, background: 'rgba(1,4,9,.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
           <div onClick={e => e.stopPropagation()}
-            style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 8, padding: 20, width: 340, display: 'flex', flexDirection: 'column', gap: 12, fontSize: 13 }}>
+            style={{ background: '#FAF6EC', border: '1px solid #D9D2BE', borderRadius: 8, padding: 20, width: 340, display: 'flex', flexDirection: 'column', gap: 12, fontSize: 13 }}>
             <h3 style={{ fontSize: 15 }}>Export Subgraph</h3>
-            <p style={{ color: '#8b949e', fontSize: 12 }}>
+            <p style={{ color: '#6E6858', fontSize: 12 }}>
               Seeds: papers found for "{searchedQuery}" · {depth}-hop traversal
             </p>
-            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, color: '#8b949e' }}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, color: '#6E6858' }}>
               What to export
               <select value={exportScope} onChange={e => setExportScope(e.target.value)} style={selectStyle}>
                 <option value="citations">Citation paths</option>
@@ -678,7 +678,7 @@ export default function Discover() {
                 <option value="topic">Whole topic subgraph</option>
               </select>
             </label>
-            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, color: '#8b949e' }}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, color: '#6E6858' }}>
               Format
               <select value={exportFormat} onChange={e => setExportFormat(e.target.value)} style={selectStyle}>
                 <option value="json">JSON (nodes + links)</option>
@@ -688,11 +688,11 @@ export default function Discover() {
             </label>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
               <button onClick={() => setShowExport(false)}
-                style={{ background: 'none', border: '1px solid #30363d', borderRadius: 6, color: '#8b949e', padding: '6px 14px', cursor: 'pointer' }}>
+                style={{ background: 'none', border: '1px solid #D9D2BE', borderRadius: 6, color: '#6E6858', padding: '6px 14px', cursor: 'pointer' }}>
                 Cancel
               </button>
               <button onClick={downloadExport}
-                style={{ background: '#58a6ff', border: 'none', borderRadius: 6, color: '#000', fontWeight: 600, padding: '6px 14px', cursor: 'pointer' }}>
+                style={{ background: '#1E4FA0', border: 'none', borderRadius: 6, color: '#FFFFFF', fontWeight: 600, padding: '6px 14px', cursor: 'pointer' }}>
                 Download
               </button>
             </div>
@@ -714,4 +714,4 @@ export default function Discover() {
   )
 }
 
-const selectStyle = { background: '#0d1117', border: '1px solid #30363d', borderRadius: 6, color: '#e6edf3', padding: '6px 8px', fontSize: 13 }
+const selectStyle = { background: '#FFFFFF', border: '1px solid #D9D2BE', borderRadius: 6, color: '#2B3A55', padding: '6px 8px', fontSize: 13 }

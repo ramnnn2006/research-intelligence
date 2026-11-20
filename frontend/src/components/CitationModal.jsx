@@ -54,7 +54,7 @@ export default function CitationModal({ paper, onClose, onAuthorClick, onSelectP
       style={{
         position: 'fixed',
         inset: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.75)',
+        backgroundColor: 'rgba(22,33,55, 0.75)',
         backdropFilter: 'blur(4px)',
         zIndex: 1000,
         display: 'flex',
@@ -66,15 +66,15 @@ export default function CitationModal({ paper, onClose, onAuthorClick, onSelectP
     >
       <div
         style={{
-          background: '#0d1117',
-          border: '1px solid #30363d',
+          background: '#FFFFFF',
+          border: '1px solid #D9D2BE',
           borderRadius: 12,
           width: '100%',
           maxWidth: 960,
           maxHeight: '90vh',
           display: 'flex',
           flexDirection: 'column',
-          boxShadow: '0 20px 50px rgba(0,0,0,0.6)',
+          boxShadow: '0 20px 50px rgba(22,33,55,0.6)',
           overflow: 'hidden'
         }}
         onClick={e => e.stopPropagation()}
@@ -82,8 +82,8 @@ export default function CitationModal({ paper, onClose, onAuthorClick, onSelectP
         {/* Header */}
         <div style={{
           padding: '16px 20px',
-          borderBottom: '1px solid #21262d',
-          background: '#161b22',
+          borderBottom: '1px solid #E6E0D0',
+          background: '#FAF6EC',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'flex-start',
@@ -92,8 +92,8 @@ export default function CitationModal({ paper, onClose, onAuthorClick, onSelectP
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
               <span style={{
-                background: 'rgba(63, 185, 80, 0.15)',
-                color: '#3fb950',
+                background: 'rgba(46,125,70, 0.15)',
+                color: '#2E7D46',
                 padding: '2px 8px',
                 borderRadius: 4,
                 fontSize: 11,
@@ -102,8 +102,8 @@ export default function CitationModal({ paper, onClose, onAuthorClick, onSelectP
                 📄 Paper Citations &amp; Network
               </span>
               <span style={{
-                background: 'rgba(88, 166, 255, 0.15)',
-                color: '#58a6ff',
+                background: 'rgba(30,79,160, 0.15)',
+                color: '#1E4FA0',
                 padding: '2px 8px',
                 borderRadius: 4,
                 fontSize: 11,
@@ -112,18 +112,18 @@ export default function CitationModal({ paper, onClose, onAuthorClick, onSelectP
                 ⭐ {citationCount.toLocaleString()} Citations
               </span>
               {rootPaper.year && (
-                <span style={{ color: '#8b949e', fontSize: 12 }}>
+                <span style={{ color: '#6E6858', fontSize: 12 }}>
                   📅 Year: {toText(rootPaper.year)}
                 </span>
               )}
             </div>
-            <h2 style={{ fontSize: 16, fontWeight: 700, color: '#e6edf3', lineHeight: 1.4, margin: '0 0 8px 0' }}>
+            <h2 style={{ fontSize: 16, fontWeight: 700, color: '#2B3A55', lineHeight: 1.4, margin: '0 0 8px 0' }}>
               {toText(rootPaper.title)}
             </h2>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-              {rootAuthors.length > 0 && <span style={{ fontSize: 12, color: '#8b949e' }}>Authors:</span>}
+              {rootAuthors.length > 0 && <span style={{ fontSize: 12, color: '#6E6858' }}>Authors:</span>}
               {!onAuthorClick && rootAuthors.length > 0 && (
-                <span style={{ fontSize: 12, color: '#c9d1d9' }}>{rootAuthors.join(', ')}</span>
+                <span style={{ fontSize: 12, color: '#44516E' }}>{rootAuthors.join(', ')}</span>
               )}
               {onAuthorClick && rootAuthors.map((author, idx) => (
                 <button
@@ -134,9 +134,9 @@ export default function CitationModal({ paper, onClose, onAuthorClick, onSelectP
                   }}
                   title={`Search papers by ${author}`}
                   style={{
-                    background: 'rgba(227, 179, 65, 0.12)',
-                    border: '1px solid rgba(227, 179, 65, 0.3)',
-                    color: '#e3b341',
+                    background: 'rgba(176,138,0, 0.12)',
+                    border: '1px solid rgba(176,138,0, 0.3)',
+                    color: '#B08A00',
                     borderRadius: 12,
                     padding: '2px 9px',
                     fontSize: 11,
@@ -144,8 +144,8 @@ export default function CitationModal({ paper, onClose, onAuthorClick, onSelectP
                     cursor: 'pointer',
                     transition: 'all 0.15s'
                   }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(227, 179, 65, 0.25)'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'rgba(227, 179, 65, 0.12)'}
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(176,138,0, 0.25)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'rgba(176,138,0, 0.12)'}
                 >
                   👤 {author}
                 </button>
@@ -157,7 +157,7 @@ export default function CitationModal({ paper, onClose, onAuthorClick, onSelectP
                   rel="noreferrer"
                   style={{
                     marginLeft: 6,
-                    color: '#58a6ff',
+                    color: '#1E4FA0',
                     fontSize: 12,
                     textDecoration: 'none',
                     display: 'inline-flex',
@@ -174,10 +174,10 @@ export default function CitationModal({ paper, onClose, onAuthorClick, onSelectP
           <button
             onClick={onClose}
             style={{
-              background: '#21262d',
+              background: '#E6E0D0',
               border: 'none',
               borderRadius: 6,
-              color: '#c9d1d9',
+              color: '#44516E',
               padding: '6px 12px',
               fontSize: 14,
               cursor: 'pointer',
@@ -193,16 +193,16 @@ export default function CitationModal({ paper, onClose, onAuthorClick, onSelectP
           display: 'flex',
           gap: 8,
           padding: '10px 20px',
-          background: '#0d1117',
-          borderBottom: '1px solid #21262d',
+          background: '#FFFFFF',
+          borderBottom: '1px solid #E6E0D0',
           alignItems: 'center'
         }}>
           <button
             onClick={() => setActiveTab('graph')}
             style={{
-              background: activeTab === 'graph' ? '#21262d' : 'none',
-              border: `1px solid ${activeTab === 'graph' ? '#58a6ff' : '#21262d'}`,
-              color: activeTab === 'graph' ? '#58a6ff' : '#8b949e',
+              background: activeTab === 'graph' ? '#E6E0D0' : 'none',
+              border: `1px solid ${activeTab === 'graph' ? '#1E4FA0' : '#E6E0D0'}`,
+              color: activeTab === 'graph' ? '#1E4FA0' : '#6E6858',
               padding: '6px 14px',
               borderRadius: 6,
               fontSize: 13,
@@ -215,9 +215,9 @@ export default function CitationModal({ paper, onClose, onAuthorClick, onSelectP
           <button
             onClick={() => setActiveTab('citations')}
             style={{
-              background: activeTab === 'citations' ? '#21262d' : 'none',
-              border: `1px solid ${activeTab === 'citations' ? '#f85149' : '#21262d'}`,
-              color: activeTab === 'citations' ? '#f85149' : '#8b949e',
+              background: activeTab === 'citations' ? '#E6E0D0' : 'none',
+              border: `1px solid ${activeTab === 'citations' ? '#C13B2E' : '#E6E0D0'}`,
+              color: activeTab === 'citations' ? '#C13B2E' : '#6E6858',
               padding: '6px 14px',
               borderRadius: 6,
               fontSize: 13,
@@ -230,9 +230,9 @@ export default function CitationModal({ paper, onClose, onAuthorClick, onSelectP
           <button
             onClick={() => setActiveTab('references')}
             style={{
-              background: activeTab === 'references' ? '#21262d' : 'none',
-              border: `1px solid ${activeTab === 'references' ? '#58a6ff' : '#21262d'}`,
-              color: activeTab === 'references' ? '#58a6ff' : '#8b949e',
+              background: activeTab === 'references' ? '#E6E0D0' : 'none',
+              border: `1px solid ${activeTab === 'references' ? '#1E4FA0' : '#E6E0D0'}`,
+              color: activeTab === 'references' ? '#1E4FA0' : '#6E6858',
               padding: '6px 14px',
               borderRadius: 6,
               fontSize: 13,
@@ -244,8 +244,8 @@ export default function CitationModal({ paper, onClose, onAuthorClick, onSelectP
           </button>
 
           {data?.source && (
-            <span style={{ marginLeft: 'auto', fontSize: 11, color: '#6e7681' }}>
-              Source: <b style={{ color: '#8b949e' }}>{toText(data.source)}</b>
+            <span style={{ marginLeft: 'auto', fontSize: 11, color: '#8A8375' }}>
+              Source: <b style={{ color: '#6E6858' }}>{toText(data.source)}</b>
             </span>
           )}
         </div>
@@ -253,7 +253,7 @@ export default function CitationModal({ paper, onClose, onAuthorClick, onSelectP
         {/* Modal body */}
         <div style={{ flex: 1, overflowY: 'auto', padding: 20 }}>
           {loading && (
-            <div style={{ textAlign: 'center', padding: '60px 20px', color: '#8b949e' }}>
+            <div style={{ textAlign: 'center', padding: '60px 20px', color: '#6E6858' }}>
               <Spinner />
               <div style={{ marginTop: 12, fontSize: 14 }}>
                 Querying academic citation index &amp; traversing graph...
@@ -263,11 +263,11 @@ export default function CitationModal({ paper, onClose, onAuthorClick, onSelectP
 
           {error && (
             <div style={{
-              background: 'rgba(248,81,73,0.1)',
-              border: '1px solid rgba(248,81,73,0.3)',
+              background: 'rgba(193,59,46,0.1)',
+              border: '1px solid rgba(193,59,46,0.3)',
               borderRadius: 8,
               padding: 16,
-              color: '#f85149',
+              color: '#C13B2E',
               fontSize: 13
             }}>
               ⚠️ {error}
@@ -285,28 +285,28 @@ export default function CitationModal({ paper, onClose, onAuthorClick, onSelectP
                     gap: 16,
                     marginBottom: 10,
                     fontSize: 12,
-                    color: '#8b949e'
+                    color: '#6E6858'
                   }}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#3fb950' }}></span>
+                      <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#2E7D46' }}></span>
                       Selected Paper (Root)
                     </span>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#f85149' }}></span>
+                      <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#C13B2E' }}></span>
                       Cited By (Incoming Citations)
                     </span>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#58a6ff' }}></span>
+                      <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#1E4FA0' }}></span>
                       References (Outgoing Citations)
                     </span>
                   </div>
 
                   {data?.graph?.nodes?.length > 1 ? (
-                    <div style={{ background: '#161b22', border: '1px solid #21262d', borderRadius: 8, padding: 12 }}>
+                    <div style={{ background: '#FAF6EC', border: '1px solid #E6E0D0', borderRadius: 8, padding: 12 }}>
                       <Graph data={data.graph} height={420} />
                     </div>
                   ) : (
-                    <div style={{ textAlign: 'center', padding: 40, color: '#6e7681', fontSize: 13 }}>
+                    <div style={{ textAlign: 'center', padding: 40, color: '#8A8375', fontSize: 13 }}>
                       No citation links mapped for this paper yet.
                     </div>
                   )}
@@ -316,11 +316,11 @@ export default function CitationModal({ paper, onClose, onAuthorClick, onSelectP
               {/* Tab 2: Citing Papers */}
               {activeTab === 'citations' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <p style={{ color: '#8b949e', fontSize: 13, margin: '0 0 6px 0' }}>
+                  <p style={{ color: '#6E6858', fontSize: 13, margin: '0 0 6px 0' }}>
                     Papers that cite <b>&ldquo;{toText(rootPaper.title)}&rdquo;</b>:
                   </p>
                   {citingPapers.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: 40, color: '#6e7681', fontSize: 13 }}>
+                    <div style={{ textAlign: 'center', padding: 40, color: '#8A8375', fontSize: 13 }}>
                       No incoming citations found in academic databases for this paper.
                     </div>
                   ) : (
@@ -328,8 +328,8 @@ export default function CitationModal({ paper, onClose, onAuthorClick, onSelectP
                       <div
                         key={idx}
                         style={{
-                          background: '#161b22',
-                          border: '1px solid #21262d',
+                          background: '#FAF6EC',
+                          border: '1px solid #E6E0D0',
                           borderRadius: 8,
                           padding: 14,
                           display: 'flex',
@@ -338,12 +338,12 @@ export default function CitationModal({ paper, onClose, onAuthorClick, onSelectP
                         }}
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
-                          <span style={{ color: '#e6edf3', fontWeight: 600, fontSize: 14 }}>
+                          <span style={{ color: '#2B3A55', fontWeight: 600, fontSize: 14 }}>
                             {toText(cp.title)}
                           </span>
                           <span style={{
-                            background: 'rgba(248,81,73,0.15)',
-                            color: '#f85149',
+                            background: 'rgba(193,59,46,0.15)',
+                            color: '#C13B2E',
                             fontSize: 11,
                             padding: '2px 7px',
                             borderRadius: 4,
@@ -353,7 +353,7 @@ export default function CitationModal({ paper, onClose, onAuthorClick, onSelectP
                             {cp.citations || 0} citations
                           </span>
                         </div>
-                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12, color: '#8b949e', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12, color: '#6E6858', flexWrap: 'wrap' }}>
                           <span>📅 {cp.year || 'N/A'}</span>
                           <span>·</span>
                           <span>{asArray(cp.authors).map(toText).join(', ') || 'Authors not listed'}</span>
@@ -364,7 +364,7 @@ export default function CitationModal({ paper, onClose, onAuthorClick, onSelectP
                               href={safeHttpUrl(cp.url)}
                               target="_blank"
                               rel="noreferrer"
-                              style={{ color: '#58a6ff', fontSize: 12, textDecoration: 'none' }}
+                              style={{ color: '#1E4FA0', fontSize: 12, textDecoration: 'none' }}
                             >
                               ↗ View Paper
                             </a>
@@ -375,7 +375,7 @@ export default function CitationModal({ paper, onClose, onAuthorClick, onSelectP
                             style={{
                               background: 'none',
                               border: 'none',
-                              color: '#3fb950',
+                              color: '#2E7D46',
                               fontSize: 12,
                               cursor: 'pointer',
                               padding: 0
@@ -394,11 +394,11 @@ export default function CitationModal({ paper, onClose, onAuthorClick, onSelectP
               {/* Tab 3: References */}
               {activeTab === 'references' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <p style={{ color: '#8b949e', fontSize: 13, margin: '0 0 6px 0' }}>
+                  <p style={{ color: '#6E6858', fontSize: 13, margin: '0 0 6px 0' }}>
                     Works cited by <b>&ldquo;{toText(rootPaper.title)}&rdquo;</b>:
                   </p>
                   {referencedPapers.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: 40, color: '#6e7681', fontSize: 13 }}>
+                    <div style={{ textAlign: 'center', padding: 40, color: '#8A8375', fontSize: 13 }}>
                       No reference records listed for this paper.
                     </div>
                   ) : (
@@ -406,8 +406,8 @@ export default function CitationModal({ paper, onClose, onAuthorClick, onSelectP
                       <div
                         key={idx}
                         style={{
-                          background: '#161b22',
-                          border: '1px solid #21262d',
+                          background: '#FAF6EC',
+                          border: '1px solid #E6E0D0',
                           borderRadius: 8,
                           padding: 14,
                           display: 'flex',
@@ -416,12 +416,12 @@ export default function CitationModal({ paper, onClose, onAuthorClick, onSelectP
                         }}
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
-                          <span style={{ color: '#e6edf3', fontWeight: 600, fontSize: 14 }}>
+                          <span style={{ color: '#2B3A55', fontWeight: 600, fontSize: 14 }}>
                             {toText(rp.title)}
                           </span>
                           <span style={{
-                            background: 'rgba(88,166,255,0.15)',
-                            color: '#58a6ff',
+                            background: 'rgba(30,79,160,0.15)',
+                            color: '#1E4FA0',
                             fontSize: 11,
                             padding: '2px 7px',
                             borderRadius: 4,
@@ -431,7 +431,7 @@ export default function CitationModal({ paper, onClose, onAuthorClick, onSelectP
                             {rp.citations || 0} citations
                           </span>
                         </div>
-                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12, color: '#8b949e', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12, color: '#6E6858', flexWrap: 'wrap' }}>
                           <span>📅 {rp.year || 'N/A'}</span>
                           <span>·</span>
                           <span>{asArray(rp.authors).map(toText).join(', ') || 'Authors not listed'}</span>
@@ -442,7 +442,7 @@ export default function CitationModal({ paper, onClose, onAuthorClick, onSelectP
                               href={safeHttpUrl(rp.url)}
                               target="_blank"
                               rel="noreferrer"
-                              style={{ color: '#58a6ff', fontSize: 12, textDecoration: 'none' }}
+                              style={{ color: '#1E4FA0', fontSize: 12, textDecoration: 'none' }}
                             >
                               ↗ View Paper
                             </a>

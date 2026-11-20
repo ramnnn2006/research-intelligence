@@ -4,10 +4,10 @@ import RepoList from '../components/RepoList'
 import { toText, asArray, safeHttpUrl, parseTimestamp } from '../utils/safe'
 
 const TYPE_META = {
-  literature_review: { label: 'Literature Review', color: '#58a6ff', icon: '📖' },
-  survey:            { label: 'Survey',             color: '#bc8cff', icon: '📚' },
-  gaps:              { label: 'Gap Analysis',        color: '#e3b341', icon: '💡' },
-  roadmap:           { label: 'Roadmap',             color: '#3fb950', icon: '🗺️' },
+  literature_review: { label: 'Literature Review', color: '#1E4FA0', icon: '📖' },
+  survey:            { label: 'Survey',             color: '#6B3FA0', icon: '📚' },
+  gaps:              { label: 'Gap Analysis',        color: '#B08A00', icon: '💡' },
+  roadmap:           { label: 'Roadmap',             color: '#2E7D46', icon: '🗺️' },
 }
 
 function fmtDate(value, opts) {
@@ -70,16 +70,16 @@ function reportText(type, content) {
   return lines.join('\n').trim()
 }
 
-const preStyle = { fontSize: 13, color: '#c9d1d9', lineHeight: 1.8, whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0, fontFamily: 'system-ui, sans-serif' }
-const h4Style = { color: '#bc8cff', fontSize: 14, margin: '14px 0 6px', fontWeight: 600 }
-const pStyle = { fontSize: 13, color: '#c9d1d9', lineHeight: 1.75, margin: 0 }
+const preStyle = { fontSize: 13, color: '#44516E', lineHeight: 1.8, whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0, fontFamily: 'system-ui, sans-serif' }
+const h4Style = { color: '#6B3FA0', fontSize: 14, margin: '14px 0 6px', fontWeight: 600 }
+const pStyle = { fontSize: 13, color: '#44516E', lineHeight: 1.75, margin: 0 }
 
 function TextList({ items, ordered }) {
   const rows = asArray(items).map(toText).filter(Boolean)
   if (!rows.length) return null
   const Tag = ordered ? 'ol' : 'ul'
   return (
-    <Tag style={{ paddingLeft: 20, margin: '4px 0', fontSize: 13, color: '#c9d1d9', lineHeight: 1.7 }}>
+    <Tag style={{ paddingLeft: 20, margin: '4px 0', fontSize: 13, color: '#44516E', lineHeight: 1.7 }}>
       {rows.map((x, i) => <li key={i}>{x}</li>)}
     </Tag>
   )
@@ -115,7 +115,7 @@ function ReportBody({ type, content }) {
           <div key={i}>
             <h4 style={h4Style}>
               {toText(ph?.phase) || `Phase ${i + 1}`}
-              {ph?.duration && <span style={{ color: '#8b949e', fontWeight: 400, fontSize: 12 }}> · {toText(ph.duration)}</span>}
+              {ph?.duration && <span style={{ color: '#6E6858', fontWeight: 400, fontSize: 12 }}> · {toText(ph.duration)}</span>}
             </h4>
             <TextList items={ph?.tasks} />
             {asArray(ph?.papers).map((pp, j) => {
@@ -125,8 +125,8 @@ function ReportBody({ type, content }) {
               return (
                 <div key={j} style={{ fontSize: 12, padding: '2px 0' }}>
                   📄 {url
-                    ? <a href={url} target="_blank" rel="noreferrer" style={{ color: '#58a6ff' }}>{title}</a>
-                    : <span style={{ color: '#8b949e' }}>{title}</span>}
+                    ? <a href={url} target="_blank" rel="noreferrer" style={{ color: '#1E4FA0' }}>{title}</a>
+                    : <span style={{ color: '#6E6858' }}>{title}</span>}
                 </div>
               )
             })}
@@ -183,20 +183,20 @@ export default function History({ active = true }) {
 
   const TabBtn = ({ id, label, count }) => (
     <button onClick={() => { setTab(id); setSelected(null) }}
-      style={{ background: tab === id ? '#21262d' : 'none', border: 'none', borderBottom: `2px solid ${tab === id ? '#58a6ff' : 'transparent'}`,
-        color: tab === id ? '#58a6ff' : '#8b949e', padding: '8px 14px', fontSize: 13,
+      style={{ background: tab === id ? '#E6E0D0' : 'none', border: 'none', borderBottom: `2px solid ${tab === id ? '#1E4FA0' : 'transparent'}`,
+        color: tab === id ? '#1E4FA0' : '#6E6858', padding: '8px 14px', fontSize: 13,
         fontWeight: 500, cursor: 'pointer', borderRadius: '6px 6px 0 0' }}>
-      {label} {count > 0 && <span style={{ background: '#21262d', color: '#8b949e', borderRadius: 99, padding: '1px 7px', fontSize: 11, marginLeft: 4 }}>{count}</span>}
+      {label} {count > 0 && <span style={{ background: '#E6E0D0', color: '#6E6858', borderRadius: 99, padding: '1px 7px', fontSize: 11, marginLeft: 4 }}>{count}</span>}
     </button>
   )
 
   return (
-    <div style={{ height: '100%', display: 'flex', overflow: 'hidden' }}>
+    <div className="ri-split" style={{ height: '100%' }}>
 
       {/* Left sidebar */}
-      <div style={{ width: 300, flexShrink: 0, borderRight: '1px solid #21262d', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <div style={{ padding: '14px 16px 0', borderBottom: '1px solid #21262d', flexShrink: 0 }}>
-          <h2 style={{ fontSize: 15, marginBottom: 10 }}>🗂️ History</h2>
+      <div className="ri-side" style={{ width: 300, flexShrink: 0, borderRight: '1px solid #E6E0D0', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div style={{ padding: '14px 16px 0', borderBottom: '1px solid #E6E0D0', flexShrink: 0 }}>
+          <h2 className="ri-title" style={{ fontSize: 17, marginBottom: 10 }}>History</h2>
           <div style={{ display: 'flex', gap: 2 }}>
             <TabBtn id="reports"  label="Reports"  count={reports.length} />
             <TabBtn id="searches" label="Searches" count={searches.length} />
@@ -204,29 +204,29 @@ export default function History({ active = true }) {
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: 12 }}>
-          {loading && <p style={{ color: '#8b949e', fontSize: 13, padding: 4 }}>Loading…</p>}
+          {loading && <p style={{ color: '#6E6858', fontSize: 13, padding: 4 }}>Loading…</p>}
 
           {/* Reports tab */}
           {!loading && tab === 'reports' && (
             reports.length === 0
-              ? <p style={{ color: '#6e7681', fontSize: 13, lineHeight: 1.6, padding: 4 }}>
+              ? <p style={{ color: '#8A8375', fontSize: 13, lineHeight: 1.6, padding: 4 }}>
                   No reports yet. Use Review, Survey, Gaps, or Roadmap to generate some.
                 </p>
               : reports.map(r => {
-                  const meta = TYPE_META[r.report_type] || { label: r.report_type, color: '#8b949e', icon: '📄' }
+                  const meta = TYPE_META[r.report_type] || { label: r.report_type, color: '#6E6858', icon: '📄' }
                   const isActive = selected?._type === 'report' && selected?.id === r.id
                   return (
                     <div key={r.id} onClick={() => openReport(r.id)}
-                      style={{ background: isActive ? '#161b22' : 'none', border: `1px solid ${isActive ? '#58a6ff' : '#21262d'}`, borderRadius: 7, padding: '10px 12px', cursor: 'pointer', marginBottom: 8, transition: 'all .15s' }}
-                      onMouseEnter={e => { if (!isActive) e.currentTarget.style.borderColor = '#30363d' }}
-                      onMouseLeave={e => { if (!isActive) e.currentTarget.style.borderColor = '#21262d' }}>
+                      style={{ background: isActive ? '#FAF6EC' : 'none', border: `1px solid ${isActive ? '#1E4FA0' : '#E6E0D0'}`, borderRadius: 7, padding: '10px 12px', cursor: 'pointer', marginBottom: 8, transition: 'all .15s' }}
+                      onMouseEnter={e => { if (!isActive) e.currentTarget.style.borderColor = '#D9D2BE' }}
+                      onMouseLeave={e => { if (!isActive) e.currentTarget.style.borderColor = '#E6E0D0' }}>
                       <div style={{ marginBottom: 5 }}>
                         <span style={{ background: `${meta.color}18`, color: meta.color, padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600 }}>
                           {meta.icon} {meta.label}
                         </span>
                       </div>
-                      <div style={{ fontSize: 13, color: '#e6edf3', lineHeight: 1.4, marginBottom: 3 }}>{r.topic}</div>
-                      <div style={{ fontSize: 11, color: '#6e7681' }}>
+                      <div style={{ fontSize: 13, color: '#2B3A55', lineHeight: 1.4, marginBottom: 3 }}>{r.topic}</div>
+                      <div style={{ fontSize: 11, color: '#8A8375' }}>
                         {fmtDate(r.created_at, { month: 'short', day: 'numeric', year: 'numeric' })}
                       </div>
                     </div>
@@ -237,18 +237,18 @@ export default function History({ active = true }) {
           {/* Searches tab */}
           {!loading && tab === 'searches' && (
             searches.length === 0
-              ? <p style={{ color: '#6e7681', fontSize: 13, lineHeight: 1.6, padding: 4 }}>
+              ? <p style={{ color: '#8A8375', fontSize: 13, lineHeight: 1.6, padding: 4 }}>
                   No searches yet. Use the Discover tab to search for papers.
                 </p>
               : searches.map((s, i) => {
                   const isActive = selected?._type === 'search' && selected?.id === s.id
                   return (
                     <div key={i} onClick={() => setSelected({ _type: 'search', ...s })}
-                      style={{ background: isActive ? '#161b22' : 'none', border: `1px solid ${isActive ? '#58a6ff' : '#21262d'}`, borderRadius: 7, padding: '10px 12px', cursor: 'pointer', marginBottom: 8, transition: 'all .15s' }}
-                      onMouseEnter={e => { if (!isActive) e.currentTarget.style.borderColor = '#30363d' }}
-                      onMouseLeave={e => { if (!isActive) e.currentTarget.style.borderColor = '#21262d' }}>
-                      <div style={{ fontSize: 13, color: '#e6edf3', marginBottom: 3 }}>🔍 {s.query}</div>
-                      <div style={{ fontSize: 11, color: '#6e7681', display: 'flex', gap: 8 }}>
+                      style={{ background: isActive ? '#FAF6EC' : 'none', border: `1px solid ${isActive ? '#1E4FA0' : '#E6E0D0'}`, borderRadius: 7, padding: '10px 12px', cursor: 'pointer', marginBottom: 8, transition: 'all .15s' }}
+                      onMouseEnter={e => { if (!isActive) e.currentTarget.style.borderColor = '#D9D2BE' }}
+                      onMouseLeave={e => { if (!isActive) e.currentTarget.style.borderColor = '#E6E0D0' }}>
+                      <div style={{ fontSize: 13, color: '#2B3A55', marginBottom: 3 }}>🔍 {s.query}</div>
+                      <div style={{ fontSize: 11, color: '#8A8375', display: 'flex', gap: 8 }}>
                         {s.repos?.length > 0 && <span>🔧 {s.repos.length} repos</span>}
                         <span>{fmtDate(s.created_at, { month: 'short', day: 'numeric' })}</span>
                       </div>
@@ -262,19 +262,19 @@ export default function History({ active = true }) {
       {/* Right content pane */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {!selected ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', gap: 8, color: '#8b949e' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', gap: 8, color: '#6E6858' }}>
             <div style={{ fontSize: 36 }}>📋</div>
             <div style={{ fontSize: 14 }}>Select an item from the list to view it</div>
           </div>
         ) : (
           <>
             {/* Header */}
-            <div style={{ borderBottom: '1px solid #21262d', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+            <div style={{ borderBottom: '1px solid #E6E0D0', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
               <div>
-                <div style={{ fontSize: 15, fontWeight: 600, color: '#e6edf3' }}>
+                <div style={{ fontSize: 15, fontWeight: 600, color: '#2B3A55' }}>
                   {selected._type === 'report' ? selected.topic : `Search: ${selected.query}`}
                 </div>
-                <div style={{ fontSize: 12, color: '#6e7681', marginTop: 2 }}>
+                <div style={{ fontSize: 12, color: '#8A8375', marginTop: 2 }}>
                   {selected._type === 'report'
                     ? `${TYPE_META[selected.report_type]?.label || selected.report_type} · ${fmtDateTime(selected.created_at)}`
                     : fmtDateTime(selected.created_at)
@@ -283,7 +283,7 @@ export default function History({ active = true }) {
               </div>
               {selected._type === 'report' && (
                 <button onClick={exportSelected}
-                  style={{ background: 'none', border: '1px solid #58a6ff', color: '#58a6ff', borderRadius: 6, padding: '6px 14px', fontSize: 12, cursor: 'pointer' }}>
+                  style={{ background: 'none', border: '1px solid #1E4FA0', color: '#1E4FA0', borderRadius: 6, padding: '6px 14px', fontSize: 12, cursor: 'pointer' }}>
                   ⬇ Export
                 </button>
               )}
@@ -300,16 +300,16 @@ export default function History({ active = true }) {
                   {/* Papers saved with report */}
                   {selected.papers?.length > 0 && (
                     <div>
-                      <h3 style={{ fontSize: 14, color: '#58a6ff', marginBottom: 12 }}>📄 Papers ({selected.papers.length})</h3>
+                      <h3 style={{ fontSize: 14, color: '#1E4FA0', marginBottom: 12 }}>📄 Papers ({selected.papers.length})</h3>
                       {selected.papers.map((p, i) => (
-                        <div key={i} style={{ paddingBottom: 8, marginBottom: 8, borderBottom: i < selected.papers.length - 1 ? '1px solid #21262d' : 'none' }}>
+                        <div key={i} style={{ paddingBottom: 8, marginBottom: 8, borderBottom: i < selected.papers.length - 1 ? '1px solid #E6E0D0' : 'none' }}>
                           <a href={p.url || p.id} target="_blank" rel="noreferrer"
-                            style={{ fontSize: 13, color: '#58a6ff', textDecoration: 'none' }}
+                            style={{ fontSize: 13, color: '#1E4FA0', textDecoration: 'none' }}
                             onMouseEnter={e => e.target.style.textDecoration = 'underline'}
                             onMouseLeave={e => e.target.style.textDecoration = 'none'}>
                             {p.title}
                           </a>
-                          <div style={{ fontSize: 11, color: '#6e7681', marginTop: 2 }}>
+                          <div style={{ fontSize: 11, color: '#8A8375', marginTop: 2 }}>
                             {(p.authors || []).slice(0, 3).join(', ')}
                             {p.year ? ` · ${p.year}` : ''}
                             {p.citations ? ` · ${p.citations} citations` : ''}
@@ -329,7 +329,7 @@ export default function History({ active = true }) {
               {selected._type === 'search' && (
                 selected.repos?.length > 0
                   ? <RepoList repos={selected.repos} title={`🔧 Repos for "${selected.query}"`} />
-                  : <p style={{ color: '#6e7681', fontSize: 13 }}>No GitHub repos found for this search.</p>
+                  : <p style={{ color: '#8A8375', fontSize: 13 }}>No GitHub repos found for this search.</p>
               )}
 
             </div>
