@@ -1,6 +1,7 @@
 import React, { useState, useEffect, createContext, useContext } from 'react'
 import { api } from './services/api'
 import ErrorBoundary from './components/ErrorBoundary'
+import Landing from './Landing'
 import Discover from './pages/Discover'
 import Review from './pages/Review'
 import Survey from './pages/Survey'
@@ -29,31 +30,33 @@ export function useTopicField() {
 }
 
 const TABS = [
-  { id: 'discover', label: '🔍 Discover' },
-  { id: 'graph',    label: '🕸️ Graph Intel' },
-  { id: 'review',   label: '📖 Review' },
-  { id: 'survey',   label: '📚 Survey' },
-  { id: 'gaps',     label: '💡 Gaps' },
-  { id: 'compare',  label: '⚖️ Compare' },
-  { id: 'chat',     label: '💬 Chat' },
-  { id: 'roadmap',  label: '🗺️ Roadmap' },
-  { id: 'history',  label: '🗂️ History' },
-  { id: 'analytics', label: '📊 Analytics' },
+  { id: 'discover', label: 'Discover' },
+  { id: 'graph',    label: 'Graph Intel' },
+  { id: 'review',   label: 'Review' },
+  { id: 'survey',   label: 'Survey' },
+  { id: 'gaps',     label: 'Gaps' },
+  { id: 'compare',  label: 'Compare' },
+  { id: 'chat',     label: 'Chat' },
+  { id: 'roadmap',  label: 'Roadmap' },
+  { id: 'history',  label: 'History' },
+  { id: 'analytics', label: 'Analytics' },
 ]
 
-function StatusBadge({ label, connected, title, color }) {
+function StatusBadge({ label, connected, title }) {
+  const color = connected ? 'var(--green)' : 'var(--muted2)'
   return (
     <span
       title={title}
       style={{
-        fontSize: 11, padding: '2px 8px', borderRadius: 12,
+        fontSize: 10.5, padding: '2px 8px', borderRadius: 12,
         display: 'flex', alignItems: 'center', gap: 4, cursor: 'help', whiteSpace: 'nowrap',
-        background: connected ? `${color}1f` : 'rgba(139,148,158,0.12)',
-        color: connected ? color : '#8b949e',
-        border: `1px solid ${connected ? `${color}4d` : 'rgba(139,148,158,0.25)'}`,
+        fontFamily: 'var(--serif-body)', letterSpacing: '.04em',
+        background: connected ? 'rgba(46,125,70,0.10)' : 'rgba(138,131,117,0.10)',
+        color,
+        border: `1px solid ${connected ? 'rgba(46,125,70,0.35)' : 'rgba(138,131,117,0.30)'}`,
       }}
     >
-      <span style={{ width: 6, height: 6, borderRadius: '50%', background: connected ? color : '#8b949e', display: 'inline-block' }} />
+      <span style={{ width: 6, height: 6, borderRadius: '50%', background: color, display: 'inline-block' }} />
       {label} {connected ? 'Active' : 'Offline'}
     </span>
   )
@@ -79,68 +82,66 @@ function mongoTitle(info) {
 }
 
 export default function App() {
+  const [entered, setEntered] = useState(() => {
+    try { return sessionStorage.getItem('ri.entered') === '1' } catch { return false }
+  })
   const [tab, setTab] = useState('discover')
   const [topic, setTopic] = useState('')
   const [neo4jInfo, setNeo4jInfo] = useState(null)
   const [mongoInfo, setMongoInfo] = useState(null)
 
   useEffect(() => {
+    if (!entered) return
     api.neo4jStatus().then(setNeo4jInfo).catch(() => setNeo4jInfo({ connected: false }))
     api.mongoStatus().then(setMongoInfo).catch(() => setMongoInfo({ connected: false }))
-  }, [])
+  }, [entered])
+
+  const enter = () => {
+    try { sessionStorage.setItem('ri.entered', '1') } catch {}
+    setEntered(true)
+  }
+
+  if (!entered) return <Landing onEnter={enter} />
 
   return (
     <TopicContext.Provider value={{ topic, setTopic }}>
       <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
         {/* Header */}
-        <header style={{
-          background: '#0d1117', borderBottom: '1px solid #21262d',
-          padding: '0 16px', height: 50, display: 'flex', alignItems: 'center',
-          gap: 12, flexShrink: 0, zIndex: 100,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-            <span style={{ fontWeight: 700, fontSize: 15, color: '#58a6ff' }}>
-              ⚗️ ResearchIQ
+        <header className="hd">
+          <div className="hd-brand">
+            <button
+              onClick={() => { try { sessionStorage.removeItem('ri.entered') } catch {}; setEntered(false) }}
+              title="Back to the cover page"
+              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+            >
+              <span className="hd-word">ResearchIQ</span>
+            </button>
+            <span className="hd-badges">
+              {neo4jInfo && <StatusBadge label="Neo4j" connected={!!neo4jInfo.connected} title={neo4jTitle(neo4jInfo)} />}
+              {mongoInfo && <StatusBadge label="Mongo" connected={!!mongoInfo.connected} title={mongoTitle(mongoInfo)} />}
             </span>
-            {neo4jInfo && <StatusBadge label="Neo4j" connected={!!neo4jInfo.connected} title={neo4jTitle(neo4jInfo)} color="#3fb950" />}
-            {mongoInfo && <StatusBadge label="Mongo" connected={!!mongoInfo.connected} title={mongoTitle(mongoInfo)} color="#10b981" />}
           </div>
 
           {/* Global topic bar */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, maxWidth: 420 }}>
+          <div className="hd-topic">
             <input
               value={topic}
               onChange={e => setTopic(e.target.value)}
               placeholder="Enter a research topic here…"
-              style={{
-                flex: 1, background: '#161b22', border: '1px solid #30363d',
-                borderRadius: 6, color: '#e6edf3', padding: '5px 10px',
-                fontSize: 13, outline: 'none',
-              }}
-              onFocus={e => e.target.style.borderColor = '#58a6ff'}
-              onBlur={e => e.target.style.borderColor = '#30363d'}
             />
             {topic && (
-              <button
-                onClick={() => setTopic('')}
-                style={{ background: 'none', border: 'none', color: '#8b949e', cursor: 'pointer', fontSize: 14, padding: '2px 4px' }}
-                title="Clear topic"
-              >✕</button>
+              <button onClick={() => setTopic('')} title="Clear topic">✕</button>
             )}
           </div>
 
-          <nav style={{ display: 'flex', gap: 1, overflowX: 'auto' }}>
-            {TABS.map(t => (
-              <button key={t.id} onClick={() => setTab(t.id)} style={{
-                background: tab === t.id ? '#161b22' : 'none',
-                border: 'none',
-                borderBottom: tab === t.id ? '2px solid #58a6ff' : '2px solid transparent',
-                color: tab === t.id ? '#58a6ff' : '#8b949e',
-                padding: '6px 11px', borderRadius: 6, fontSize: 12, fontWeight: 500,
-                whiteSpace: 'nowrap', cursor: 'pointer', transition: 'all .15s',
-              }}>
-                {t.label}
-              </button>
+          <nav className="hd-tabs">
+            {TABS.map((t, i) => (
+              <React.Fragment key={t.id}>
+                {i > 0 && <span className="hd-sep">/</span>}
+                <button className={`hd-tab${tab === t.id ? ' on' : ''}`} onClick={() => setTab(t.id)}>
+                  {t.label}
+                </button>
+              </React.Fragment>
             ))}
           </nav>
         </header>

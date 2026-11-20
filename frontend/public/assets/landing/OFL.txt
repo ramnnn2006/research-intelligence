@@ -1,0 +1,5 @@
+The fonts in this folder (Playfair Display, Caveat) are licensed under the
+SIL Open Font License, Version 1.1.
+Playfair Display: Copyright 2017 The Playfair Display Project Authors (https://github.com/clauseggers/Playfair-Display)
+Caveat: Copyright 2014 The Caveat Project Authors (https://github.com/googlefonts/caveat)
+Full license text: https://openfontlicense.org
