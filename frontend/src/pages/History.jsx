@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { api } from '../services/api'
+import { useToast } from '../components/Toast'
 import RepoList from '../components/RepoList'
 import { toText, asArray, safeHttpUrl, parseTimestamp } from '../utils/safe'
 
@@ -146,30 +147,47 @@ export default function History({ active = true }) {
   const [reports, setReports]   = useState([])
   const [searches, setSearches] = useState([])
   const [selected, setSelected] = useState(null)
+  const detailRef = useRef(null)
+  // stacked phone layout: bring the opened item into view, since it sits below the list
+  useEffect(() => {
+    if (!selected || !detailRef.current || !window.matchMedia('(max-width: 760px)').matches) return
+    const calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    detailRef.current.scrollIntoView({ block: 'start', behavior: calm ? 'auto' : 'smooth' })
+  }, [selected])
   const [loading, setLoading]   = useState(true)
+  const toast = useToast()
   const loadReq = useRef(0)
+  const [loadError, setLoadError] = useState('')
+  const [storesOffline, setStoresOffline] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
 
   // Every tab stays mounted, so reload whenever this tab is shown to pick up new reports
   useEffect(() => {
     if (!active) return
     const id = ++loadReq.current
+    let failure = ''
     Promise.all([
-      api.reports().catch(() => []),
-      api.searches().catch(() => []),
-    ]).then(([r, s]) => {
+      api.reports().catch(e => { failure = e.message || 'request failed'; return [] }),
+      api.searches().catch(e => { failure = e.message || 'request failed'; return [] }),
+      api.neo4jStatus().then(x => !!x?.connected).catch(() => null),
+      api.mongoStatus().then(x => !!x?.connected).catch(() => null),
+    ]).then(([r, s, neo, mongo]) => {
       if (id !== loadReq.current) return
       setReports(Array.isArray(r) ? r : [])
       setSearches(Array.isArray(s) ? s : [])
+      setLoadError(failure)
+      // only claim "offline" when both status checks answered and both said not connected
+      setStoresOffline(neo === false && mongo === false)
       setLoading(false)
     })
-  }, [active])
+  }, [active, reloadKey])
 
   async function openReport(id) {
     try {
       const r = await fetch(`/api/reports/${encodeURIComponent(id)}`)
-      if (!r.ok) return
+      if (!r.ok) throw new Error(`HTTP ${r.status}`)
       setSelected({ _type: 'report', ...(await r.json()) })
-    } catch {}
+    } catch (e) { toast({ message: `Could not open report: ${e.message}`, kind: 'error' }) }
   }
 
   function exportSelected() {
@@ -179,6 +197,7 @@ export default function History({ active = true }) {
     a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' }))
     a.download = `${(selected.topic || selected.query || 'export').replace(/\W+/g, '_')}.txt`
     a.click()
+    toast({ message: `Saved ${a.download}`, kind: 'success' })
   }
 
   const TabBtn = ({ id, label, count }) => (
@@ -205,9 +224,20 @@ export default function History({ active = true }) {
 
         <div style={{ flex: 1, overflowY: 'auto', padding: 12 }}>
           {loading && <p style={{ color: '#6E6858', fontSize: 13, padding: 4 }}>Loading…</p>}
+          {!loading && loadError && (
+            <div role="alert" style={{ fontSize: 13, color: '#8A2B20', background: 'rgba(193,59,46,.08)', border: '1px solid rgba(193,59,46,.25)', borderRadius: 7, padding: '8px 10px', marginBottom: 10 }}>
+              Could not load history: {loadError}
+              <div><button onClick={() => { setLoading(true); setReloadKey(k => k + 1) }} style={{ marginTop: 6, background: 'none', border: '1px solid #C13B2E', color: '#8A2B20', borderRadius: 6, padding: '4px 10px', fontSize: 12, cursor: 'pointer' }}>Try again</button></div>
+            </div>
+          )}
+          {!loading && !loadError && storesOffline && (
+            <p style={{ color: '#6E6858', fontSize: 12, lineHeight: 1.5, padding: '0 4px 10px' }}>
+              Neo4j and MongoDB are both offline, so this list only holds items from the current server session.
+            </p>
+          )}
 
           {/* Reports tab */}
-          {!loading && tab === 'reports' && (
+          {!loading && !loadError && tab === 'reports' && (
             reports.length === 0
               ? <p style={{ color: '#8A8375', fontSize: 13, lineHeight: 1.6, padding: 4 }}>
                   No reports yet. Use Review, Survey, Gaps, or Roadmap to generate some.
@@ -216,7 +246,7 @@ export default function History({ active = true }) {
                   const meta = TYPE_META[r.report_type] || { label: r.report_type, color: '#6E6858', icon: '📄' }
                   const isActive = selected?._type === 'report' && selected?.id === r.id
                   return (
-                    <div key={r.id} onClick={() => openReport(r.id)}
+                    <div key={r.id} role="button" tabIndex={0} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openReport(r.id) } }} onClick={() => openReport(r.id)}
                       style={{ background: isActive ? '#FAF6EC' : 'none', border: `1px solid ${isActive ? '#1E4FA0' : '#E6E0D0'}`, borderRadius: 7, padding: '10px 12px', cursor: 'pointer', marginBottom: 8, transition: 'all .15s' }}
                       onMouseEnter={e => { if (!isActive) e.currentTarget.style.borderColor = '#D9D2BE' }}
                       onMouseLeave={e => { if (!isActive) e.currentTarget.style.borderColor = '#E6E0D0' }}>
@@ -235,7 +265,7 @@ export default function History({ active = true }) {
           )}
 
           {/* Searches tab */}
-          {!loading && tab === 'searches' && (
+          {!loading && !loadError && tab === 'searches' && (
             searches.length === 0
               ? <p style={{ color: '#8A8375', fontSize: 13, lineHeight: 1.6, padding: 4 }}>
                   No searches yet. Use the Discover tab to search for papers.
@@ -243,7 +273,7 @@ export default function History({ active = true }) {
               : searches.map((s, i) => {
                   const isActive = selected?._type === 'search' && selected?.id === s.id
                   return (
-                    <div key={i} onClick={() => setSelected({ _type: 'search', ...s })}
+                    <div key={i} role="button" tabIndex={0} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelected({ _type: 'search', ...s }) } }} onClick={() => setSelected({ _type: 'search', ...s })}
                       style={{ background: isActive ? '#FAF6EC' : 'none', border: `1px solid ${isActive ? '#1E4FA0' : '#E6E0D0'}`, borderRadius: 7, padding: '10px 12px', cursor: 'pointer', marginBottom: 8, transition: 'all .15s' }}
                       onMouseEnter={e => { if (!isActive) e.currentTarget.style.borderColor = '#D9D2BE' }}
                       onMouseLeave={e => { if (!isActive) e.currentTarget.style.borderColor = '#E6E0D0' }}>
@@ -260,9 +290,9 @@ export default function History({ active = true }) {
       </div>
 
       {/* Right content pane */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div ref={detailRef} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {!selected ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', gap: 8, color: '#6E6858' }}>
+          <div className="ri-empty-detail" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', gap: 8, color: '#6E6858' }}>
             <div style={{ fontSize: 36 }}>📋</div>
             <div style={{ fontSize: 14 }}>Select an item from the list to view it</div>
           </div>

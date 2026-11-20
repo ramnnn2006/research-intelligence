@@ -23,7 +23,7 @@ export default function RepoList({ repos, title = '🔧 GitHub Repos' }) {
             </span>
             <span style={{ fontSize: 11, color: '#8A8375', flexShrink: 0 }}>⭐ {(r.stars || 0).toLocaleString()}</span>
             {r.language && (
-              <span style={{ fontSize: 11, color: '#B08A00', flexShrink: 0, minWidth: 40, textAlign: 'right' }}>{r.language}</span>
+              <span style={{ fontSize: 11, color: '#7A5C00', flexShrink: 0, minWidth: 40, textAlign: 'right' }}>{r.language}</span>
             )}
           </a>
         ))}

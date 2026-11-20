@@ -19,7 +19,7 @@ const BENCH = [
 
 const card = { background: '#FAF6EC', border: '1px solid #E6E0D0', borderRadius: 8, padding: 16 }
 
-function BarChart({ rows, keyField }) {
+function BarChart({ rows, keyField, unavailable }) {
   const max = Math.max(1, ...rows.map(r => r.count))
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -32,7 +32,7 @@ function BarChart({ rows, keyField }) {
           <span style={{ color: '#6E6858', textAlign: 'right' }}>{r.count.toLocaleString()}</span>
         </div>
       ))}
-      {rows.length === 0 && <div style={{ color: '#8A8375', fontSize: 12 }}>Nothing stored yet</div>}
+      {rows.length === 0 && <div style={{ color: '#6E6858', fontSize: 12 }}>{unavailable ? 'Unavailable while Neo4j is offline' : 'Nothing stored yet'}</div>}
     </div>
   )
 }
@@ -74,9 +74,10 @@ export default function Analytics() {
   }
 
   const online = health?.status === 'healthy'
+  const known = online && stats?.connected !== false   // counts are only real when Neo4j answered
   const cards = [
-    ['Papers', stats?.papers], ['Authors', stats?.authors], ['Repositories', stats?.repositories],
-    ['Topics', stats?.topics], ['Relationships', stats?.total_relationships],
+    ['Papers', known ? stats?.papers : null], ['Authors', known ? stats?.authors : null], ['Repositories', known ? stats?.repositories : null],
+    ['Topics', known ? stats?.topics : null], ['Relationships', known ? stats?.total_relationships : null],
     ['Heap used', health?.memory?.available ? `${health.memory.heap_used_mb} MB` : 'n/a'],
   ]
 
@@ -96,6 +97,15 @@ export default function Analytics() {
         </button>
       </div>
 
+      {!loading && !stats && !health && (
+        <div role="alert" style={{ fontSize: 13, color: '#8A2B20' }}>Could not reach the server for analytics. Try Refresh.</div>
+      )}
+      {!loading && health && !online && (
+        <div style={{ fontSize: 13, color: '#6E6858' }}>
+          Neo4j is offline, so these figures are unavailable (shown as a dash){health.detail ? `. Server detail: ${health.detail}` : ''}.
+        </div>
+      )}
+
       {/* Stat cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12 }}>
         {cards.map(([label, value]) => (
@@ -110,11 +120,11 @@ export default function Analytics() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
         <div style={card}>
           <h3 style={{ fontSize: 13, marginBottom: 12 }}>Node distribution by label</h3>
-          <BarChart rows={health?.nodes?.by_label || []} keyField="label" />
+          <BarChart rows={health?.nodes?.by_label || []} keyField="label" unavailable={!online} />
         </div>
         <div style={card}>
           <h3 style={{ fontSize: 13, marginBottom: 12 }}>Relationships by type</h3>
-          <BarChart rows={health?.relationships?.by_type || []} keyField="type" />
+          <BarChart rows={health?.relationships?.by_type || []} keyField="type" unavailable={!online} />
         </div>
       </div>
 
@@ -127,6 +137,7 @@ export default function Analytics() {
             {benchRunning ? <><Spinner />Running…</> : 'Run benchmark'}
           </button>
         </div>
+        <div style={{ overflowX: "auto" }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
           <thead>
             <tr style={{ color: '#6E6858', textAlign: 'left' }}>
@@ -147,6 +158,7 @@ export default function Analytics() {
             ))}
           </tbody>
         </table>
+        </div>
         {bench.length === 0 && !benchRunning && (
           <div style={{ color: '#8A8375', fontSize: 12, padding: '10px 8px' }}>Times each graph query endpoint once from the browser, network round trip included.</div>
         )}

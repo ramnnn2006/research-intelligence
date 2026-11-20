@@ -3,6 +3,9 @@ import { api } from '../services/api'
 import { useTopicField } from '../App'
 import PaperCard from '../components/PaperCard'
 import Spinner from '../components/Spinner'
+import ErrorNote from '../components/ErrorNote'
+import { DocSkeleton } from '../components/Skeleton'
+import { useToast, useNotifyDone } from '../components/Toast'
 import { toText } from '../utils/safe'
 
 function Md({ text }) {
@@ -28,13 +31,16 @@ export default function Review() {
   const [error, setError] = useState('')
   const [ranTopic, setRanTopic] = useState('')
 
+  const toast = useToast()
+  const notify = useNotifyDone('review', 'Review')
+
   async function run() {
     if (!topic.trim() || loading) return
     const t = topic
     commitTopic(t)
     setLoading(true); setError(''); setResult(null)
-    try { setResult(await api.review(t)); setRanTopic(t) }
-    catch (e) { setError(e.message) }
+    try { setResult(await api.review(t)); setRanTopic(t); notify(`Literature review ready: ${t}`) }
+    catch (e) { setError(e.message); notify(e.message, 'error') }
     finally { setLoading(false) }
   }
 
@@ -43,6 +49,7 @@ export default function Review() {
     const a = document.createElement('a')
     a.href = URL.createObjectURL(new Blob([`# Literature Review: ${ranTopic}\n\n${result.review}`], { type: 'text/plain' }))
     a.download = `review_${ranTopic.replace(/\W+/g, '_').substring(0, 30)}.md`; a.click()
+    toast({ message: `Saved ${a.download}`, kind: 'success' })
   }
 
   return (
@@ -52,7 +59,7 @@ export default function Review() {
         <p style={{ color: '#6E6858', fontSize: 13, marginBottom: 14 }}>Formal academic literature review using top papers from ArXiv + Semantic Scholar</p>
         <div className="ri-form-row" style={{ display: 'flex', gap: 10 }}>
           <input value={topic} onChange={e => setTopic(e.target.value)} onKeyDown={e => e.key === 'Enter' && run()}
-            placeholder="e.g. Federated Learning for privacy preservation"
+            placeholder="e.g. Federated Learning for privacy preservation" aria-label="Federated Learning for privacy preservation"
             style={{ flex: 1, background: '#FFFFFF', border: '1px solid #D9D2BE', borderRadius: 6, color: '#2B3A55', padding: '8px 12px', fontSize: 14, outline: 'none' }}
             onFocus={e => e.target.style.borderColor = '#1E4FA0'}
             onBlur={e => e.target.style.borderColor = '#D9D2BE'} />
@@ -61,9 +68,11 @@ export default function Review() {
             {loading ? <><Spinner />Generating…</> : 'Generate Review'}
           </button>
         </div>
-        {error && <div style={{ marginTop: 10, color: '#C13B2E', fontSize: 13, background: 'rgba(193,59,46,.08)', padding: '8px 12px', borderRadius: 6 }}>⚠️ {error}</div>}
+        <ErrorNote error={error} />
         {loading && <p style={{ color: '#6E6858', fontSize: 12, marginTop: 8 }}>Fetching papers and generating review — ~30s…</p>}
       </div>
+
+      {loading && <DocSkeleton label="Generating literature review" />}
 
       {result && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 16, alignItems: 'start' }}>

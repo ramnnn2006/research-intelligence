@@ -1,6 +1,7 @@
 import React, { useState, useEffect, createContext, useContext } from 'react'
 import { api } from './services/api'
 import ErrorBoundary from './components/ErrorBoundary'
+import { ToastProvider } from './components/Toast'
 import Landing from './Landing'
 import Discover from './pages/Discover'
 import Review from './pages/Review'
@@ -42,11 +43,11 @@ const TABS = [
   { id: 'analytics', label: 'Analytics' },
 ]
 
-function StatusBadge({ label, connected, title }) {
+function StatusBadge({ label, connected, title, showDetail }) {
   const color = connected ? 'var(--green)' : 'var(--muted2)'
-  return (
+  const badge = (
     <span
-      title={title}
+      title={title} tabIndex={0} aria-label={`${label} ${connected ? 'active' : 'offline'}. ${title || ''}`}
       style={{
         fontSize: 10.5, padding: '2px 8px', borderRadius: 12,
         display: 'flex', alignItems: 'center', gap: 4, cursor: 'help', whiteSpace: 'nowrap',
@@ -60,13 +61,20 @@ function StatusBadge({ label, connected, title }) {
       {label} {connected ? 'Active' : 'Offline'}
     </span>
   )
+  if (!showDetail) return badge
+  return (
+    <span style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+      {badge}
+      {title && <span style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.4, maxWidth: 260, whiteSpace: 'pre-line' }}>{title}</span>}
+    </span>
+  )
 }
 
 const n = v => (Number(v) || 0).toLocaleString()
 
 function neo4jTitle(info) {
   const where = info.uri ? ` (${info.uri})` : ''
-  if (!info.connected) return `Neo4j offline${where}, graph features use the in-memory fallback`
+  if (!info.connected) return 'Neo4j is offline. Metrics cannot be saved and Graph Intel analytics are unavailable. The Discover graph is built separately and still works.'
   const s = info.stats || {}
   return `Neo4j graph store active${where}\nPapers: ${n(s.papers)}, Authors: ${n(s.authors)}, Topics: ${n(s.topics)}\n` +
     `Repositories: ${n(s.repositories)}, Models: ${n(s.models)}, Datasets: ${n(s.datasets)}\nRelationships: ${n(s.relationships)}`
@@ -75,7 +83,7 @@ function neo4jTitle(info) {
 function mongoTitle(info) {
   // the Mongo status does not always carry a URI, so only show what is there
   const where = [info.db, info.host].filter(Boolean).join(' @ ')
-  if (!info.connected) return `MongoDB offline${where ? ` (${where})` : ''}`
+  if (!info.connected) return 'MongoDB is offline. Features that store data in it, such as saved history, are unavailable until it is reachable.'
   const s = info.stats || {}
   return `MongoDB document store active${where ? ` (${where})` : ''}\n` +
     `Papers: ${n(s.papers)}, Searches: ${n(s.searches)}, Reports: ${n(s.reports)}, Chat messages: ${n(s.chat_messages)}`
@@ -85,8 +93,14 @@ export default function App() {
   const [entered, setEntered] = useState(() => {
     try { return sessionStorage.getItem('ri.entered') === '1' } catch { return false }
   })
-  const [tab, setTab] = useState('discover')
+  const TAB_IDS = TABS.map(t => t.id)
+  const [tab, setTab] = useState(() => {
+    const h = (typeof location !== 'undefined' ? location.hash : '').replace('#', '')
+    return TAB_IDS.includes(h) ? h : 'discover'
+  })
   const [topic, setTopic] = useState('')
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuBtn = React.useRef(null)
   const [neo4jInfo, setNeo4jInfo] = useState(null)
   const [mongoInfo, setMongoInfo] = useState(null)
 
@@ -95,6 +109,57 @@ export default function App() {
     api.neo4jStatus().then(setNeo4jInfo).catch(() => setNeo4jInfo({ connected: false }))
     api.mongoStatus().then(setMongoInfo).catch(() => setMongoInfo({ connected: false }))
   }, [entered])
+
+  const firstSync = React.useRef(true)
+  // remember the open tab across refreshes and name it in the browser tab title
+  useEffect(() => {
+    if (!entered) { document.title = 'ResearchIQ'; return }
+    const label = TABS.find(t => t.id === tab)?.label || ''
+    document.title = `${label} · ResearchIQ`
+    if (location.hash !== `#${tab}`) {
+      if (firstSync.current) history.replaceState(null, '', `#${tab}`)
+      else history.pushState(null, '', `#${tab}`)
+    }
+    firstSync.current = false
+  }, [tab, entered])
+
+  // browser back/forward or a hand-edited hash switches the page
+  useEffect(() => {
+    function onHash() {
+      const h = location.hash.replace('#', '')
+      if (TAB_IDS.includes(h)) setTab(h)
+    }
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
+  }, [])
+
+  // phone drawer: focus moves in on open, Tab stays inside, Escape closes and returns focus
+  const navRef = React.useRef(null)
+  useEffect(() => {
+    if (!menuOpen) return
+    const nav = navRef.current
+    const focusables = () => [...nav.querySelectorAll('button')]
+    ;(nav.querySelector('.hd-tab.on') || focusables()[0])?.focus()
+    const onKey = e => {
+      if (e.key === 'Escape') { setMenuOpen(false); menuBtn.current?.focus(); return }
+      if (e.key !== 'Tab') return
+      const f = focusables()
+      if (!f.length) return
+      const first = f[0], last = f[f.length - 1]
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus() }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus() }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [menuOpen])
+
+  // leaving the phone breakpoint with the drawer open would strand it
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 761px)')
+    const on = () => { if (mq.matches) setMenuOpen(false) }
+    mq.addEventListener('change', on)
+    return () => mq.removeEventListener('change', on)
+  }, [])
 
   const enter = () => {
     try { sessionStorage.setItem('ri.entered', '1') } catch {}
@@ -105,7 +170,8 @@ export default function App() {
 
   return (
     <TopicContext.Provider value={{ topic, setTopic }}>
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+      <ToastProvider tab={tab} setTab={setTab}>
+      <div className="ri-shell" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {/* Header */}
         <header className="hd">
           <div className="hd-brand">
@@ -122,23 +188,40 @@ export default function App() {
             </span>
           </div>
 
+          <button ref={menuBtn} type="button" className="hd-menu-btn" aria-expanded={menuOpen} aria-controls="hd-nav"
+            aria-label={`Open menu. Current page: ${TABS.find(t => t.id === tab)?.label}`}
+            onClick={() => setMenuOpen(o => !o)}>
+            <span className="hd-burger" aria-hidden="true"><i /><i /><i /></span>
+            <span className="hd-menu-cur">{TABS.find(t => t.id === tab)?.label}</span>
+          </button>
+
           {/* Global topic bar */}
           <div className="hd-topic">
             <input
               value={topic}
               onChange={e => setTopic(e.target.value)}
-              placeholder="Enter a research topic here…"
+              onKeyDown={e => e.key === 'Escape' && setTopic('')}
+              placeholder="Enter a research topic here…" aria-label="Enter a research topic here"
             />
             {topic && (
               <button onClick={() => setTopic('')} title="Clear topic">✕</button>
             )}
           </div>
 
-          <nav className="hd-tabs">
+          {menuOpen && <div className="hd-scrim" onClick={() => { setMenuOpen(false); menuBtn.current?.focus() }} aria-hidden="true" />}
+          <nav id="hd-nav" ref={navRef} className={`hd-tabs${menuOpen ? ' open' : ''}`} aria-label="Pages">
+            <div className="hd-drawer-head">
+              <span className="hd-word">ResearchIQ</span>
+              <button type="button" className="hd-drawer-x" aria-label="Close menu" onClick={() => { setMenuOpen(false); menuBtn.current?.focus() }}>✕</button>
+            </div>
+            <span className="hd-badges hd-badges-drawer">
+              {neo4jInfo && <StatusBadge showDetail label="Neo4j" connected={!!neo4jInfo.connected} title={neo4jTitle(neo4jInfo)} />}
+              {mongoInfo && <StatusBadge showDetail label="Mongo" connected={!!mongoInfo.connected} title={mongoTitle(mongoInfo)} />}
+            </span>
             {TABS.map((t, i) => (
               <React.Fragment key={t.id}>
                 {i > 0 && <span className="hd-sep">/</span>}
-                <button className={`hd-tab${tab === t.id ? ' on' : ''}`} onClick={() => setTab(t.id)}>
+                <button className={`hd-tab${tab === t.id ? ' on' : ''}`} aria-current={tab === t.id ? 'page' : undefined} onClick={() => { setTab(t.id); if (menuOpen) { setMenuOpen(false); menuBtn.current?.focus() } }}>
                   {t.label}
                 </button>
               </React.Fragment>
@@ -160,7 +243,7 @@ export default function App() {
             ['history',  <History active={tab === 'history'} />],
             ['analytics', <Analytics />],
           ].map(([id, page]) => (
-            <div key={id} style={{
+            <div key={id} className={tab === id ? 'ri-panel' : undefined} style={{
               position: 'absolute', inset: 0,
               display: tab === id ? 'block' : 'none',
               overflow: 'hidden',
@@ -170,6 +253,7 @@ export default function App() {
           ))}
         </main>
       </div>
+      </ToastProvider>
     </TopicContext.Provider>
   )
 }

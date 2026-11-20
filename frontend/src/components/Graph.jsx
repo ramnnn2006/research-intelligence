@@ -208,7 +208,7 @@ export default function Graph({ data, height = 420, depth, onDepthChange }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, fontSize: 12, color: '#6E6858' }}>
           <span>Traversal depth</span>
           <input
-            type="range" min={1} max={3} step={1} value={depth || 1}
+            type="range" aria-label="Traversal depth in hops" aria-valuetext={`${depth || 1}-hop`} min={1} max={3} step={1} value={depth || 1}
             onChange={e => onDepthChange(Number(e.target.value))}
             style={{ flex: 1, accentColor: '#1E4FA0', cursor: 'pointer' }}
           />

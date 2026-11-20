@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { api } from '../services/api'
 import Graph from '../components/Graph'
 import Spinner from '../components/Spinner'
+import { useToast } from '../components/Toast'
 import { toText, asArray } from '../utils/safe'
 
 const METRICS = [
@@ -26,7 +27,7 @@ export default function GraphAnalytics() {
   const [topic, setTopic] = useState('')
   const [loading, setLoading] = useState(false)
   const [syncing, setSyncing] = useState(false)
-  const [syncMsg, setSyncMsg] = useState('')
+  const toast = useToast()
   const [data, setData] = useState(null)
   const [leaderboardTab, setLeaderboardTab] = useState('papers') // 'papers' | 'authors'
   const [selectedPaper, setSelectedPaper] = useState(null)
@@ -70,20 +71,14 @@ export default function GraphAnalytics() {
 
   async function handleSyncToNeo4j() {
     setSyncing(true)
-    setSyncMsg('')
     try {
       const res = await api.graphSyncMetrics()
-      if (res?.success) {
-        setSyncMsg(`✅ ${toText(res.message)}`)
-      } else {
-        setSyncMsg(`⚠️ ${toText(res?.error || res?.message) || 'Sync failed'}`)
-      }
+      if (res?.success) toast({ message: toText(res.message) || 'Metrics synced to Neo4j', kind: 'success' })
+      else toast({ message: `Sync failed: ${toText(res?.error || res?.message) || 'no details returned'}`, kind: 'error' })
     } catch (e) {
-      setSyncMsg(`❌ Sync error: ${e.message}`)
+      toast({ message: `Sync error: ${e.message}`, kind: 'error' })
     } finally {
       setSyncing(false)
-      clearTimeout(syncTimer.current)
-      syncTimer.current = setTimeout(() => setSyncMsg(''), 6000)
     }
   }
 
@@ -118,11 +113,6 @@ export default function GraphAnalytics() {
 
         {/* Sync to Neo4j Button */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {syncMsg && (
-            <span style={{ fontSize: 11, color: syncMsg.startsWith('✅') ? 'var(--green)' : 'var(--red)', fontWeight: 500 }}>
-              {syncMsg}
-            </span>
-          )}
           <button
             onClick={handleSyncToNeo4j}
             disabled={syncing}
@@ -201,7 +191,7 @@ export default function GraphAnalytics() {
             value={topic}
             onChange={e => setTopic(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && fetchAnalytics()}
-            placeholder="Filter by topic (leave blank for all)..."
+            placeholder="Filter by topic (leave blank for all)..." aria-label="Filter by topic (leave blank for all)"
             style={{
               background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6,
               color: 'var(--text)', padding: '5px 10px', fontSize: 11, width: 220, minWidth: 0, outline: 'none'
@@ -275,7 +265,7 @@ export default function GraphAnalytics() {
               style={{
                 flex: 1, padding: '10px 14px', fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer',
                 background: leaderboardTab === 'authors' ? 'var(--panel)' : 'transparent',
-                color: leaderboardTab === 'authors' ? '#B08A00' : 'var(--muted)',
+                color: leaderboardTab === 'authors' ? '#7A5C00' : 'var(--muted)',
                 borderBottom: leaderboardTab === 'authors' ? '2px solid #B08A00' : 'none'
               }}
             >
@@ -294,6 +284,8 @@ export default function GraphAnalytics() {
                 return (
                   <div
                     key={idx}
+                    role="button" tabIndex={0}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedPaper(p) } }}
                     onClick={() => setSelectedPaper(p)}
                     style={{
                       background: isSelected ? 'rgba(30,79,160,0.08)' : 'var(--panel2)',

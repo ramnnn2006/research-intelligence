@@ -71,7 +71,7 @@ export default function PaperCard({ paper, onSelect, selected, onViewCitations, 
       </div>
 
       {/* Metadata & Authors (clickable only when onAuthorClick is given) */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', fontSize: 12, color: 'var(--muted, #6E6858)' }}>
+      <div className="ri-pc-meta" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', fontSize: 12, color: 'var(--muted, #6E6858)' }}>
         {paper.year && <span>📅 {toText(paper.year)}</span>}
         {paper.year && authors.length > 0 && <span>·</span>}
         {authors.length > 0 && (onAuthorClick
@@ -81,15 +81,16 @@ export default function PaperCard({ paper, onSelect, selected, onViewCitations, 
                 <button
                   key={idx}
                   type="button"
+                  className="ri-pc-author"
                   title={`Search all papers by ${auth}`}
                   onClick={e => { e.stopPropagation(); onAuthorClick(auth) }}
                   style={{
                     background: 'rgba(176,138,0, 0.1)',
                     border: '1px solid rgba(176,138,0, 0.25)',
-                    color: '#B08A00',
+                    color: '#7A5C00',
                     borderRadius: 10,
                     padding: '1px 7px',
-                    fontSize: 11,
+                    fontSize: 12,
                     cursor: 'pointer',
                     transition: 'background .15s'
                   }}
@@ -100,7 +101,7 @@ export default function PaperCard({ paper, onSelect, selected, onViewCitations, 
                 </button>
               ))}
               {authors.length > 4 && (
-                <span style={{ color: '#8A8375', fontSize: 11 }}>+{authors.length - 4} more</span>
+                <span style={{ color: '#6E6858', fontSize: 11 }}>+{authors.length - 4} more</span>
               )}
             </>
           : <span>{authors.slice(0, 3).join(', ')}{authors.length > 3 ? ' et al.' : ''}</span>
@@ -110,7 +111,7 @@ export default function PaperCard({ paper, onSelect, selected, onViewCitations, 
 
       {/* Abstract/Summary */}
       {paper.summary && (
-        <div style={{
+        <div className="ri-pc-sum" style={{
           fontSize: 12,
           color: 'var(--muted2, #44516E)',
           lineHeight: 1.55,
@@ -135,6 +136,7 @@ export default function PaperCard({ paper, onSelect, selected, onViewCitations, 
         }}>
           <button
             type="button"
+            className="ri-pc-btn"
             onClick={e => { e.stopPropagation(); handleCardClick() }}
             style={{
               background: 'rgba(46,125,70, 0.12)',
@@ -157,7 +159,7 @@ export default function PaperCard({ paper, onSelect, selected, onViewCitations, 
             {paper.citations ? ` (${Number(paper.citations).toLocaleString()})` : ''}
           </button>
 
-          <span style={{ fontSize: 11, color: '#8A8375' }}>
+          <span className="ri-pc-hint" style={{ fontSize: 11, color: '#8A8375' }}>
             Click card to inspect
           </span>
         </div>

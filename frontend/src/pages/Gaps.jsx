@@ -2,6 +2,9 @@ import React, { useState } from 'react'
 import { api } from '../services/api'
 import { useTopicField } from '../App'
 import Spinner from '../components/Spinner'
+import ErrorNote from '../components/ErrorNote'
+import { DocSkeleton } from '../components/Skeleton'
+import { useNotifyDone } from '../components/Toast'
 import { toText, asArray } from '../utils/safe'
 
 const COLORS = ['#1E4FA0', '#6B3FA0', '#2E7D46', '#B08A00', '#C13B2E']
@@ -14,13 +17,15 @@ export default function Gaps() {
   const [error, setError] = useState('')
   const [ranTopic, setRanTopic] = useState('')
 
+  const notify = useNotifyDone('gaps', 'Gaps')
+
   async function run() {
     if (!topic.trim() || loading) return
     const t = topic
     commitTopic(t)
     setLoading(true); setError(''); setResult(null)
-    try { setResult(await api.gaps(t)); setRanTopic(t) }
-    catch (e) { setError(e.message) }
+    try { setResult(await api.gaps(t)); setRanTopic(t); notify(`Research gaps ready: ${t}`) }
+    catch (e) { setError(e.message); notify(e.message, 'error') }
     finally { setLoading(false) }
   }
 
@@ -31,7 +36,7 @@ export default function Gaps() {
         <p style={{ color: '#6E6858', fontSize: 13, marginBottom: 14 }}>Identify unresolved problems and future research opportunities</p>
         <div className="ri-form-row" style={{ display: 'flex', gap: 10 }}>
           <input value={topic} onChange={e => setTopic(e.target.value)} onKeyDown={e => e.key === 'Enter' && run()}
-            placeholder="e.g. explainable AI in medical imaging"
+            placeholder="e.g. explainable AI in medical imaging" aria-label="explainable AI in medical imaging"
             style={{ flex: 1, background: '#FFFFFF', border: '1px solid #D9D2BE', borderRadius: 6, color: '#2B3A55', padding: '8px 12px', fontSize: 14, outline: 'none' }}
             onFocus={e => e.target.style.borderColor = '#1E4FA0'}
             onBlur={e => e.target.style.borderColor = '#D9D2BE'} />
@@ -40,9 +45,11 @@ export default function Gaps() {
             {loading ? <><Spinner />Detecting…</> : 'Detect Gaps'}
           </button>
         </div>
-        {error && <div style={{ marginTop: 10, color: '#C13B2E', fontSize: 13, background: 'rgba(193,59,46,.08)', padding: '8px 12px', borderRadius: 6 }}>⚠️ {error}</div>}
+        <ErrorNote error={error} />
         {loading && <p style={{ color: '#6E6858', fontSize: 12, marginTop: 8 }}>Analysing papers to identify gaps — ~20s…</p>}
       </div>
+
+      {loading && <DocSkeleton label="Detecting research gaps" />}
 
       {result && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

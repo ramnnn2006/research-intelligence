@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { api } from '../services/api'
 import Graph from './Graph'
 import Spinner from './Spinner'
+import useDialog from '../hooks/useDialog'
 import { safeHttpUrl, toText, asArray } from '../utils/safe'
 
 export default function CitationModal({ paper, onClose, onAuthorClick, onSelectPaper }) {
@@ -9,6 +10,7 @@ export default function CitationModal({ paper, onClose, onAuthorClick, onSelectP
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [activeTab, setActiveTab] = useState('graph') // 'graph' | 'citations' | 'references'
+  const dialogRef = useDialog(!!paper, onClose)
 
   useEffect(() => {
     // drop the previous paper's data so the header never shows a stale paper
@@ -65,6 +67,7 @@ export default function CitationModal({ paper, onClose, onAuthorClick, onSelectP
       onClick={onClose}
     >
       <div
+        ref={dialogRef} role="dialog" aria-modal="true" aria-label={'Citations for ' + (paper.title || 'paper')} tabIndex={-1}
         style={{
           background: '#FFFFFF',
           border: '1px solid #D9D2BE',
@@ -136,10 +139,10 @@ export default function CitationModal({ paper, onClose, onAuthorClick, onSelectP
                   style={{
                     background: 'rgba(176,138,0, 0.12)',
                     border: '1px solid rgba(176,138,0, 0.3)',
-                    color: '#B08A00',
+                    color: '#7A5C00',
                     borderRadius: 12,
                     padding: '2px 9px',
-                    fontSize: 11,
+                    fontSize: 12,
                     fontWeight: 500,
                     cursor: 'pointer',
                     transition: 'all 0.15s'

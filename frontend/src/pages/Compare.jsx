@@ -1,9 +1,12 @@
 import React, { useState } from 'react'
 import { api } from '../services/api'
 import Spinner from '../components/Spinner'
+import ErrorNote from '../components/ErrorNote'
+import { DocSkeleton } from '../components/Skeleton'
+import { useNotifyDone } from '../components/Toast'
 import { toText, asArray } from '../utils/safe'
 
-function PaperInput({ label, value, onChange }) {
+function PaperInput({ label, value, onChange, onSubmit }) {
   return (
     <div style={{ flex: 1 }}>
       <div style={{ fontSize: 12, color: '#6E6858', marginBottom: 6, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em' }}>
@@ -12,7 +15,8 @@ function PaperInput({ label, value, onChange }) {
       <input
         value={value.title || ''}
         onChange={e => onChange({ ...value, title: e.target.value })}
-        placeholder="Paper title"
+        placeholder="Paper title" aria-label={label + " title"}
+        onKeyDown={e => { if (e.key === 'Enter' && onSubmit) onSubmit() }}
         style={{ width: '100%', background: '#FFFFFF', border: '1px solid #D9D2BE', borderRadius: 6, color: '#2B3A55', padding: '8px 10px', fontSize: 13, outline: 'none', marginBottom: 8, boxSizing: 'border-box' }}
         onFocus={e => e.target.style.borderColor = '#1E4FA0'}
         onBlur={e => e.target.style.borderColor = '#D9D2BE'}
@@ -20,7 +24,7 @@ function PaperInput({ label, value, onChange }) {
       <textarea
         value={value.summary || ''}
         onChange={e => onChange({ ...value, summary: e.target.value })}
-        placeholder="Paste abstract here (optional — improves comparison accuracy)"
+        placeholder="Paste abstract here (optional — improves comparison accuracy)" aria-label={label + " abstract (optional)"}
         rows={5}
         style={{ width: '100%', background: '#FFFFFF', border: '1px solid #D9D2BE', borderRadius: 6, color: '#2B3A55', padding: '8px 10px', fontSize: 12, outline: 'none', resize: 'vertical', lineHeight: 1.55, boxSizing: 'border-box' }}
         onFocus={e => e.target.style.borderColor = '#1E4FA0'}
@@ -39,6 +43,8 @@ export default function Compare() {
 
   const [titles, setTitles] = useState({ a: '', b: '' })
 
+  const notify = useNotifyDone('compare', 'Compare')
+
   async function run() {
     if (!pa.title.trim() || !pb.title.trim() || loading) return
     setLoading(true); setError(''); setResult(null)
@@ -54,8 +60,9 @@ export default function Compare() {
         })),
       })
       setTitles({ a: pa.title, b: pb.title })
+      notify('Paper comparison ready')
     }
-    catch (e) { setError(e.message) }
+    catch (e) { setError(e.message); notify(e.message, 'error') }
     finally { setLoading(false) }
   }
 
@@ -69,8 +76,8 @@ export default function Compare() {
           Compare two papers side-by-side across methodology, datasets, results, limitations, and novelty
         </p>
         <div className="ri-compare-row" style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
-          <PaperInput label="Paper A" value={pa} onChange={setPa} />
-          <PaperInput label="Paper B" value={pb} onChange={setPb} />
+          <PaperInput label="Paper A" value={pa} onChange={setPa} onSubmit={run} />
+          <PaperInput label="Paper B" value={pb} onChange={setPb} onSubmit={run} />
         </div>
         <button
           onClick={run}
@@ -79,13 +86,11 @@ export default function Compare() {
         >
           {loading ? <><Spinner />Comparing…</> : 'Compare Papers'}
         </button>
-        {error && (
-          <div style={{ marginTop: 10, color: '#C13B2E', fontSize: 13, background: 'rgba(193,59,46,.08)', padding: '8px 12px', borderRadius: 6 }}>
-            ⚠️ {error}
-          </div>
-        )}
+        <ErrorNote error={error} />
         {loading && <p style={{ color: '#6E6858', fontSize: 12, marginTop: 8 }}>Analysing both papers — ~20s…</p>}
       </div>
+
+      {loading && <DocSkeleton label="Comparing papers" />}
 
       {result && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>

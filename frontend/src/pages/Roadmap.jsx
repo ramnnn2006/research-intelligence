@@ -2,6 +2,9 @@ import React, { useState } from 'react'
 import { api } from '../services/api'
 import { useTopicField } from '../App'
 import Spinner from '../components/Spinner'
+import ErrorNote from '../components/ErrorNote'
+import { DocSkeleton } from '../components/Skeleton'
+import { useNotifyDone } from '../components/Toast'
 import RepoList from '../components/RepoList'
 import { toText, asArray, safeHttpUrl } from '../utils/safe'
 
@@ -14,13 +17,15 @@ export default function Roadmap() {
   const [result, setResult] = useState(null)
   const [error, setError] = useState('')
 
+  const notify = useNotifyDone('roadmap', 'Roadmap')
+
   async function run() {
     if (!topic.trim() || loading) return
     const t = topic
     commitTopic(t)
     setLoading(true); setError(''); setResult(null)
-    try { setResult(await api.roadmap(t)) }
-    catch (e) { setError(e.message) }
+    try { setResult(await api.roadmap(t)); notify(`Roadmap ready: ${t}`) }
+    catch (e) { setError(e.message); notify(e.message, 'error') }
     finally { setLoading(false) }
   }
 
@@ -69,7 +74,7 @@ export default function Roadmap() {
           <input
             value={topic} onChange={e => setTopic(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && run()}
-            placeholder="e.g. multimodal learning for robotics"
+            placeholder="e.g. multimodal learning for robotics" aria-label="multimodal learning for robotics"
             style={{ flex: 1, background: '#FFFFFF', border: '1px solid #D9D2BE', borderRadius: 6, color: '#2B3A55', padding: '8px 12px', fontSize: 14, outline: 'none' }}
             onFocus={e => e.target.style.borderColor = '#1E4FA0'}
             onBlur={e => e.target.style.borderColor = '#D9D2BE'}
@@ -79,9 +84,11 @@ export default function Roadmap() {
             {loading ? <><Spinner />Building…</> : 'Build Roadmap'}
           </button>
         </div>
-        {error && <div style={{ marginTop: 10, color: '#C13B2E', fontSize: 13, background: 'rgba(193,59,46,.08)', padding: '8px 12px', borderRadius: 6 }}>⚠️ {error}</div>}
+        <ErrorNote error={error} />
         {loading && <p style={{ color: '#6E6858', fontSize: 12, marginTop: 8 }}>Fetching papers and building roadmap — ~20s…</p>}
       </div>
+
+      {loading && <DocSkeleton label="Building roadmap" />}
 
       {r && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 16, alignItems: 'start' }}>

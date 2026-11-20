@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { api } from '../services/api'
+import { explainError } from '../utils/errors'
 import Spinner from '../components/Spinner'
 import { safeHttpUrl, toText, asArray } from '../utils/safe'
 
@@ -140,6 +141,7 @@ function Md({ text }) {
 }
 
 export default function Chat() {
+  const [optsOpen, setOptsOpen] = useState(false)
   const [mode, setMode] = useState('global') // 'global' | 'pdf'
   const [msgs, setMsgs] = useState([])
   const [input, setInput] = useState('')
@@ -172,7 +174,7 @@ export default function Chat() {
   }, [])
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    bottomRef.current?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
   }, [msgs, loading, loadingPdf])
 
   async function refreshPdfStatus() {
@@ -281,7 +283,8 @@ export default function Chat() {
       }
     } catch (e) {
       // LLM failures arrive as 502 with a readable detail message
-      addMsg({ role: 'bot', content: `⚠️ Error: ${e.message}` })
+      const x = explainError(e.message)
+      addMsg({ role: 'bot', content: `⚠️ **${x.title}**${x.hint ? ' ' + x.hint : ''}${x.detail && x.detail !== x.title ? `\n\nDetails: ${x.detail}` : ''}` })
     } finally {
       setLoading(false)
     }
@@ -326,6 +329,10 @@ export default function Chat() {
           </button>
         </div>
 
+        <button type="button" className="ri-chat-opts-btn" aria-expanded={optsOpen || (mode === 'pdf' && !pdfStats.loaded)} onClick={() => setOptsOpen(o => !o)}>
+          <span>{mode === 'pdf' ? 'Paper & prompts' : 'Settings & quick questions'}</span><span aria-hidden="true">{optsOpen ? '−' : '+'}</span>
+        </button>
+        <div className={'ri-chat-opts' + ((optsOpen || (mode === 'pdf' && !pdfStats.loaded)) ? ' open' : '')}>
         {/* PDF Mode Sidebar Controls */}
         {mode === 'pdf' ? (
           <>
@@ -416,7 +423,7 @@ export default function Chat() {
                   value={arxivIdInput}
                   onChange={e => setArxivIdInput(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleFetchArxiv()}
-                  placeholder="ArXiv ID (e.g. 1706.03762)"
+                  placeholder="ArXiv ID (e.g. 1706.03762)" aria-label="ArXiv ID (1706.03762)"
                   disabled={loadingPdf}
                   style={{
                     flex: 1, background: 'var(--bg)', border: '1px solid var(--border)',
@@ -519,6 +526,8 @@ export default function Chat() {
             </div>
           </>
         )}
+
+        </div>
 
         {msgs.length > 0 && (
           <button onClick={clearChat}
@@ -651,19 +660,19 @@ export default function Chat() {
                           <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
                             {m.chunks.map((c, ci) => (
                               <div key={ci} style={{
-                                background: 'rgba(22,33,55,0.25)', border: '1px solid var(--border)',
-                                borderRadius: 6, padding: '8px 10px', fontSize: 11,
+                                background: 'var(--panel)', border: '1px solid var(--border)',
+                                borderRadius: 6, padding: '8px 10px', fontSize: 12,
                               }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                                   <span style={{
-                                    background: 'rgba(30,79,160,0.2)', color: 'var(--accent)',
-                                    padding: '1px 6px', borderRadius: 10, fontWeight: 600, fontSize: 10
+                                    background: 'rgba(30,79,160,0.10)', color: 'var(--accent)',
+                                    padding: '1px 6px', borderRadius: 10, fontWeight: 600, fontSize: 11
                                   }}>
                                     📄 Page {c.page}
                                   </span>
-                                  <span style={{ color: 'var(--muted)', fontSize: 10 }}>{toText(c.paper)}</span>
+                                  <span style={{ color: 'var(--muted)', fontSize: 11 }}>{toText(c.paper)}</span>
                                 </div>
-                                <div style={{ color: 'var(--muted2)', fontStyle: 'italic', lineHeight: 1.4 }}>
+                                <div style={{ color: 'var(--text)', fontStyle: 'italic', lineHeight: 1.45 }}>
                                   "{toText(c.text)}…"
                                 </div>
                               </div>
@@ -676,13 +685,16 @@ export default function Chat() {
                     {/* Global Sources */}
                     {m.sources?.length > 0 && (
                       <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid var(--border)' }}>
-                        <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 5 }}>📚 Sources used:</div>
+                        <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 5 }}>📚 Sources used:</div>
                         {m.sources.slice(0, 4).map((s, j) => (
                           <a key={j} href={safeHttpUrl(s.url || s.id) || undefined} target="_blank" rel="noreferrer"
                             style={{ display: 'block', fontSize: 11, color: 'var(--accent)', lineHeight: 1.5, marginBottom: 3 }}>
                             [{j + 1}] {toText(s.title).substring(0, 70)}{toText(s.title).length > 70 ? '…' : ''}
                           </a>
                         ))}
+                        {m.sources.length > 4 && (
+                          <div style={{ fontSize: 11, color: 'var(--muted)' }}>Showing 4 of {m.sources.length} sources</div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -733,6 +745,7 @@ export default function Chat() {
         }}>
           <input
             ref={inputRef}
+            aria-label="Ask a question"
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
@@ -745,7 +758,7 @@ export default function Chat() {
                 : 'Ask about methods, papers, datasets, results…'
             }
             style={{
-              flex: 1, background: 'var(--panel2)', border: '1px solid var(--border)',
+              flex: 1, minWidth: 0, background: 'var(--panel2)', border: '1px solid var(--border)',
               borderRadius: 8, color: 'var(--text)', padding: '10px 14px',
               fontSize: 14, outline: 'none', transition: 'border-color .15s',
             }}
@@ -758,8 +771,8 @@ export default function Chat() {
             style={{
               background: loading || loadingPdf || !input.trim() ? 'var(--border)' : 'var(--accent)',
               color: loading || loadingPdf || !input.trim() ? 'var(--muted)' : '#FFFFFF',
-              border: 'none', borderRadius: 8, padding: '10px 22px',
-              fontWeight: 600, fontSize: 14, transition: 'all .15s',
+              border: 'none', borderRadius: 8, padding: '10px 18px', flexShrink: 0,
+              fontWeight: 600, fontSize: 14, transition: 'all .15s', whiteSpace: 'nowrap',
               cursor: loading || loadingPdf || !input.trim() ? 'not-allowed' : 'pointer',
             }}
           >
