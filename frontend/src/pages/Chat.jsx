@@ -140,7 +140,7 @@ function Md({ text }) {
   )
 }
 
-export default function Chat() {
+export default function Chat({ active = true }) {
   const [optsOpen, setOptsOpen] = useState(false)
   const [mode, setMode] = useState('global') // 'global' | 'pdf'
   const [msgs, setMsgs] = useState([])
@@ -169,9 +169,13 @@ export default function Chat() {
     setExpandedChunks({})
   }
 
+  // the tab stays mounted while hidden; fetch the PDF status when it is first shown
+  const pdfStatusFetched = useRef(false)
   useEffect(() => {
+    if (!active || pdfStatusFetched.current) return
+    pdfStatusFetched.current = true
     refreshPdfStatus()
-  }, [])
+  }, [active])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })

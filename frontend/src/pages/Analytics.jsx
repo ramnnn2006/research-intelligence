@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { api } from '../services/api'
 import Spinner from '../components/Spinner'
 
@@ -37,7 +37,7 @@ function BarChart({ rows, keyField, unavailable }) {
   )
 }
 
-export default function Analytics() {
+export default function Analytics({ active = true }) {
   const [stats, setStats]     = useState(null)
   const [health, setHealth]   = useState(null)
   const [loading, setLoading] = useState(true)
@@ -53,7 +53,13 @@ export default function Analytics() {
     setStats(s); setHealth(h); setLoading(false)
   }
 
-  useEffect(() => { load() }, [])
+  // the tab stays mounted while hidden; load once it is first shown, not at app entry
+  const loadedOnce = useRef(false)
+  useEffect(() => {
+    if (!active || loadedOnce.current) return
+    loadedOnce.current = true
+    load()
+  }, [active])
 
   async function runBenchmark() {
     setBenchRunning(true); setBench([])

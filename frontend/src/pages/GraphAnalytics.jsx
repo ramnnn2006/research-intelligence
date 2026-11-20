@@ -22,7 +22,7 @@ const METRIC_KEY = {
 
 const num = v => (typeof v === 'number' && isFinite(v) ? v : Number(v) || 0)
 
-export default function GraphAnalytics() {
+export default function GraphAnalytics({ active = true }) {
   const [metric, setMetric] = useState('pagerank')
   const [topic, setTopic] = useState('')
   const [loading, setLoading] = useState(false)
@@ -35,9 +35,14 @@ export default function GraphAnalytics() {
   const reqId = useRef(0)
   const syncTimer = useRef()
 
+  // the tab stays mounted while hidden; only compute analytics once it is shown,
+  // then again when the metric changes while visible
+  const lastFetch = useRef(null)
   useEffect(() => {
+    if (!active || lastFetch.current === metric) return
+    lastFetch.current = metric
     fetchAnalytics()
-  }, [metric])
+  }, [metric, active])
 
   useEffect(() => () => clearTimeout(syncTimer.current), [])
 

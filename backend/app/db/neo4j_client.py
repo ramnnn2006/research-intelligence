@@ -8,13 +8,23 @@ from typing import Any, Dict, List, Optional
 logger = logging.getLogger("research_iq.neo4j")
 logging.basicConfig(level=logging.INFO)
 
-# Optional Neo4j driver import with fallback
-try:
-    from neo4j import GraphDatabase, Driver, Session, exceptions
-    NEO4J_AVAILABLE = True
-except ImportError:
-    NEO4J_AVAILABLE = False
-    logger.warning("neo4j python package not installed. Using in-memory graph fallback.")
+# The Neo4j driver is imported lazily on the first connect: it costs ~0.3 s of
+# interpreter startup, which dominates cold start on hosts that spin down.
+_driver_lib = None          # (GraphDatabase, exceptions) once loaded
+_driver_unavailable = False
+
+def _load_driver():
+    """Import the neo4j package once; returns (GraphDatabase, exceptions) or None."""
+    global _driver_lib, _driver_unavailable
+    if _driver_lib is not None or _driver_unavailable:
+        return _driver_lib
+    try:
+        from neo4j import GraphDatabase, exceptions
+        _driver_lib = (GraphDatabase, exceptions)
+    except ImportError:
+        _driver_unavailable = True
+        logger.warning("neo4j python package not installed. Using in-memory graph fallback.")
+    return _driver_lib
 
 # After a failed connect, wait this long before trying again so an offline
 # database answers "not connected" at once instead of stalling every call.
@@ -83,9 +93,11 @@ class Neo4jClient:
         answered a connectivity check. Failed attempts are throttled for
         RECONNECT_BACKOFF_SECONDS.
         """
-        if not NEO4J_AVAILABLE:
+        lib = _load_driver()
+        if lib is None:
             self._is_connected = False
             return False
+        GraphDatabase, _ = lib
 
         if self.is_connected():
             return True
@@ -149,7 +161,8 @@ class Neo4jClient:
 
     def _handle_error(self, kind: str, cypher: str, error: Exception):
         logger.error("Neo4j %s error for query [%s]: %s", kind, cypher, error)
-        if NEO4J_AVAILABLE and isinstance(error, (exceptions.ServiceUnavailable, exceptions.SessionExpired)):
+        lib = _load_driver()
+        if lib is not None and isinstance(error, (lib[1].ServiceUnavailable, lib[1].SessionExpired)):
             self._mark_offline(error)
 
     def execute_write(self, cypher: str, parameters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:

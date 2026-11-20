@@ -14,6 +14,19 @@ import History from './pages/History'
 import Analytics from './pages/Analytics'
 import GraphAnalytics from './pages/GraphAnalytics'
 
+// Memoized page components: App state that pages do not use (drawer, status badges)
+// must not re-render ten mounted tabs. Context updates still reach consumers.
+const MemoDiscover = React.memo(Discover)
+const MemoGraphAnalytics = React.memo(GraphAnalytics)
+const MemoReview = React.memo(Review)
+const MemoSurvey = React.memo(Survey)
+const MemoGaps = React.memo(Gaps)
+const MemoCompare = React.memo(Compare)
+const MemoChat = React.memo(Chat)
+const MemoRoadmap = React.memo(Roadmap)
+const MemoHistory = React.memo(History)
+const MemoAnalytics = React.memo(Analytics)
+
 // Shared context so any tab can read/write the global topic
 export const TopicContext = createContext({ topic: '', setTopic: () => {} })
 export const useTopicContext = () => useContext(TopicContext)
@@ -166,10 +179,13 @@ export default function App() {
     setEntered(true)
   }
 
+  // a stable value: drawer or badge updates do not re-render every context consumer
+  const topicValue = React.useMemo(() => ({ topic, setTopic }), [topic])
+
   if (!entered) return <Landing onEnter={enter} />
 
   return (
-    <TopicContext.Provider value={{ topic, setTopic }}>
+    <TopicContext.Provider value={topicValue}>
       <ToastProvider tab={tab} setTab={setTab}>
       <div className="ri-shell" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {/* Header */}
@@ -232,16 +248,16 @@ export default function App() {
         {/* Pages — all mounted, just show/hide to preserve state */}
         <main style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
           {[
-            ['discover', <Discover />],
-            ['graph',    <GraphAnalytics />],
-            ['review',   <Review />],
-            ['survey',   <Survey />],
-            ['gaps',     <Gaps />],
-            ['compare',  <Compare />],
-            ['chat',     <Chat />],
-            ['roadmap',  <Roadmap />],
-            ['history',  <History active={tab === 'history'} />],
-            ['analytics', <Analytics />],
+            ['discover', <MemoDiscover />],
+            ['graph',    <MemoGraphAnalytics active={tab === 'graph'} />],
+            ['review',   <MemoReview />],
+            ['survey',   <MemoSurvey />],
+            ['gaps',     <MemoGaps />],
+            ['compare',  <MemoCompare />],
+            ['chat',     <MemoChat active={tab === 'chat'} />],
+            ['roadmap',  <MemoRoadmap />],
+            ['history',  <MemoHistory active={tab === 'history'} />],
+            ['analytics', <MemoAnalytics active={tab === 'analytics'} />],
           ].map(([id, page]) => (
             <div key={id} className={tab === id ? 'ri-panel' : undefined} style={{
               position: 'absolute', inset: 0,

@@ -93,10 +93,12 @@ async def _llm(coro):
 
 
 async def _topic_papers(topic: str, n_arxiv: int, n_scholar: int, top_up: bool = True):
-    papers = _merge([
-        await arxiv.search(topic, n_arxiv),
-        await scholar.search(topic, n_scholar),
-    ])
+    # the two sources are independent; await them together so latency adds to max, not sum
+    arxiv_res, scholar_res = await asyncio.gather(
+        arxiv.search(topic, n_arxiv),
+        scholar.search(topic, n_scholar),
+    )
+    papers = _merge([arxiv_res, scholar_res])
     if top_up:
         papers = await agent.top_up_papers(topic, papers)
     await run_in_threadpool(add_papers, papers)
@@ -120,9 +122,12 @@ async def search(req: SearchReq):
     datasets = hf_res.get("datasets", []) if isinstance(hf_res, dict) else []
 
     papers = _merge([arxiv_res, scholar_res])
-    await run_in_threadpool(add_papers, papers)
-    await run_in_threadpool(save_search, req.query, papers, gh_res)
-    await run_in_threadpool(save_hf_artifacts, req.query, models, datasets)
+    # the three stores are independent; write them together before the graph read-back
+    await asyncio.gather(
+        run_in_threadpool(add_papers, papers),
+        run_in_threadpool(save_search, req.query, papers, gh_res),
+        run_in_threadpool(save_hf_artifacts, req.query, models, datasets),
+    )
 
     # read the topic subgraph back from Neo4j; build it in memory when Neo4j is offline
     graph = await run_in_threadpool(get_topic_graph, req.query)
@@ -204,10 +209,11 @@ async def chat(req: ChatReq):
     if req.use_rag and rag_count() > 0:
         papers = await run_in_threadpool(rag_query, req.question, 8)
     else:
-        papers = _merge([
-            await arxiv.search(req.question, 6),
-            await scholar.search(req.question, 4),
-        ])
+        arxiv_res, scholar_res = await asyncio.gather(
+            arxiv.search(req.question, 6),
+            scholar.search(req.question, 4),
+        )
+        papers = _merge([arxiv_res, scholar_res])
         await run_in_threadpool(add_papers, papers)
     answer = await _llm(agent.answer_question(req.question, papers))
     return {"answer": answer, "sources": papers[:6]}

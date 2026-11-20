@@ -1,6 +1,7 @@
 import os, json, re, asyncio, logging
 from typing import Any, Callable, Dict, Iterator, Optional
-from langchain_groq import ChatGroq
+# langchain_groq is imported lazily inside _llm(): it costs ~0.4 s of startup and
+# is only needed when an LLM endpoint is actually called
 from langchain_core.prompts import PromptTemplate
 from app.mcp.crossref import CrossRefMCP
 from app.mcp.pubmed import PubMedMCP
@@ -31,6 +32,7 @@ def _llm(temp=0.3):
     key = _env_token("GROQ_API_KEY")
     if not key:
         raise LLMError("GROQ_API_KEY is not set")
+    from langchain_groq import ChatGroq
     return ChatGroq(
         model=os.getenv("GROQ_MODEL", "").strip() or DEFAULT_GROQ_MODEL,
         groq_api_key=key,
