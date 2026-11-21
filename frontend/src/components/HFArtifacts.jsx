@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { safeHttpUrl, toText, asArray } from '../utils/safe'
+import Ic from './Ic'
 
 // transformers Auto class per Hugging Face pipeline tag
 const AUTO_CLASS = {
@@ -61,8 +62,8 @@ function Tags({ tags }) {
     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
       {list.map((t, idx) => (
         <span key={idx} style={{
-          background: '#FFFFFF', border: '1px solid #D9D2BE',
-          color: '#8A8375', padding: '1px 6px', borderRadius: 4, fontSize: 10
+          background: 'var(--panel)', border: '1px solid var(--border2)',
+          color: 'var(--muted2)', padding: '1px 6px', borderRadius: 4, fontSize: 10
         }}>
           {t}
         </span>
@@ -92,31 +93,31 @@ export function ModelCard({ model }) {
   const failed = copyState === 'failed'
 
   return (
-    <div style={{
-      background: '#FAF6EC', border: '1px solid #E6E0D0', borderRadius: 8,
+    <div className="ri-hf-card" style={{
+      background: 'var(--panel2)', border: '1px solid var(--border)', borderRadius: 8,
       padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8,
       transition: 'border-color .15s'
     }}
-    onMouseEnter={e => e.currentTarget.style.borderColor = '#BF6210'}
-    onMouseLeave={e => e.currentTarget.style.borderColor = '#E6E0D0'}
+    onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--copper)'}
+    onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 13, color: '#6E6858' }}>🤗 {toText(model.author)}/</span>
+            <span style={{ fontSize: 13, color: 'var(--muted)' }}><Ic d="box" /> {toText(model.author)}/</span>
             {url ? (
               <a href={url} target="_blank" rel="noreferrer"
-                style={{ fontSize: 14, fontWeight: 600, color: '#BF6210', textDecoration: 'none' }}>
+                style={{ fontSize: 14, fontWeight: 600, color: 'var(--copper)', textDecoration: 'none' }}>
                 {toText(model.name)}
               </a>
             ) : (
-              <span style={{ fontSize: 14, fontWeight: 600, color: '#BF6210' }}>{toText(model.name)}</span>
+              <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--copper)' }}>{toText(model.name)}</span>
             )}
             {model.pipeline_tag && (
               <span style={{
-                background: 'rgba(30,79,160,0.12)', color: '#1E4FA0',
+                background: 'rgba(var(--accent-rgb),0.12)', color: 'var(--accent)',
                 padding: '2px 7px', borderRadius: 10, fontSize: 10, fontWeight: 600,
-                border: '1px solid rgba(30,79,160,0.25)'
+                border: '1px solid rgba(var(--accent-rgb),0.25)'
               }}>
                 {toText(model.pipeline_tag)}
               </span>
@@ -128,29 +129,29 @@ export function ModelCard({ model }) {
           <button
             onClick={copySnippet}
             style={{
-              background: copied ? 'rgba(46,125,70,0.2)' : failed ? 'rgba(193,59,46,0.12)' : 'rgba(30,79,160,0.08)',
-              color: copied ? '#2E7D46' : failed ? '#C13B2E' : '#6E6858',
-              border: `1px solid ${copied ? 'rgba(46,125,70,0.4)' : failed ? 'rgba(193,59,46,0.4)' : '#D9D2BE'}`,
+              background: copied ? 'rgba(var(--green-rgb),0.2)' : failed ? 'rgba(193,59,46,0.12)' : 'rgba(var(--accent-rgb),0.08)',
+              color: copied ? 'var(--green)' : failed ? 'var(--red)' : 'var(--muted)',
+              border: `1px solid ${copied ? 'rgba(var(--green-rgb),0.4)' : failed ? 'rgba(193,59,46,0.4)' : 'var(--border2)'}`,
               borderRadius: 5, padding: '3px 8px', fontSize: 11, cursor: 'pointer'
             }}
           >
-            {copied ? '✓ Snippet Copied' : failed ? '✕ Copy failed' : '📋 Python Snippet'}
+            {copied ? '✓ Snippet copied' : failed ? '✕ Copy failed' : <><Ic d="clip" /> Python snippet</>}
           </button>
         </div>
       </div>
 
       {/* Metrics Row */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 11, color: '#6E6858' }}>
-        <span>📥 {(Number(model.downloads) || 0).toLocaleString()} downloads</span>
-        <span>❤️ {(Number(model.likes) || 0).toLocaleString()} likes</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 11, color: 'var(--muted)' }}>
+        <span><Ic d="down" /> {(Number(model.downloads) || 0).toLocaleString()} downloads</span>
+        <span><Ic d="heart" /> {(Number(model.likes) || 0).toLocaleString()} likes</span>
         {model.arxiv_id && (
           <a
             href={`https://arxiv.org/abs/${encodeURI(toText(model.arxiv_id))}`}
             target="_blank"
             rel="noreferrer"
-            style={{ color: '#1E4FA0', fontSize: 11 }}
+            style={{ color: 'var(--accent)', fontSize: 11 }}
           >
-            📄 Paper ({toText(model.arxiv_id)})
+            <Ic d="doc" /> Paper ({toText(model.arxiv_id)})
           </a>
         )}
       </div>
@@ -163,29 +164,29 @@ export function ModelCard({ model }) {
 export function DatasetCard({ dataset }) {
   const url = safeHttpUrl(dataset.url)
   return (
-    <div style={{
-      background: '#FAF6EC', border: '1px solid #E6E0D0', borderRadius: 8,
+    <div className="ri-hf-card" style={{
+      background: 'var(--panel2)', border: '1px solid var(--border)', borderRadius: 8,
       padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8,
       transition: 'border-color .15s'
     }}
-    onMouseEnter={e => e.currentTarget.style.borderColor = '#0E7490'}
-    onMouseLeave={e => e.currentTarget.style.borderColor = '#E6E0D0'}
+    onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--cyan)'}
+    onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 13, color: '#6E6858' }}>📊 {toText(dataset.author)}/</span>
+          <span style={{ fontSize: 13, color: 'var(--muted)' }}><Ic d="chart" /> {toText(dataset.author)}/</span>
           {url ? (
             <a href={url} target="_blank" rel="noreferrer"
-              style={{ fontSize: 14, fontWeight: 600, color: '#0E7490', textDecoration: 'none' }}>
+              style={{ fontSize: 14, fontWeight: 600, color: 'var(--cyan)', textDecoration: 'none' }}>
               {toText(dataset.name)}
             </a>
           ) : (
-            <span style={{ fontSize: 14, fontWeight: 600, color: '#0E7490' }}>{toText(dataset.name)}</span>
+            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--cyan)' }}>{toText(dataset.name)}</span>
           )}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 11, color: '#6E6858' }}>
-          <span>📥 {(Number(dataset.downloads) || 0).toLocaleString()} downloads</span>
-          <span>❤️ {(Number(dataset.likes) || 0).toLocaleString()} likes</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 11, color: 'var(--muted)' }}>
+          <span><Ic d="down" /> {(Number(dataset.downloads) || 0).toLocaleString()} downloads</span>
+          <span><Ic d="heart" /> {(Number(dataset.likes) || 0).toLocaleString()} likes</span>
         </div>
       </div>
 

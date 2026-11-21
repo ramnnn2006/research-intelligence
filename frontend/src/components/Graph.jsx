@@ -3,9 +3,9 @@ import * as d3 from 'd3'
 import { escapeHtml, safeHttpUrl } from '../utils/safe'
 
 const COLORS = {
-  topic: '#1E4FA0', paper: '#6E6858', repo: '#6B3FA0',
-  author: '#B08A00', root: '#2E7D46', cited_by: '#C13B2E', reference: '#1E4FA0',
-  model: '#BF6210', dataset: '#0E7490',
+  topic: 'var(--accent)', paper: 'var(--muted)', repo: 'var(--purple)',
+  author: 'var(--orange)', root: 'var(--green)', cited_by: 'var(--red)', reference: 'var(--accent)',
+  model: 'var(--copper)', dataset: 'var(--cyan)',
 }
 const SIZES = {
   topic: 16, paper: 9, repo: 11, author: 7, root: 16, cited_by: 8, reference: 8,
@@ -15,11 +15,11 @@ const SIZES = {
 // Edge colour by relationship (search graph uses lower case, the Neo4j export upper case)
 function linkColor(relation) {
   const r = String(relation || '').toLowerCase()
-  if (r === 'authored') return '#B08A00'
-  if (r === 'model') return '#BF6210'
-  if (r === 'dataset') return '#0E7490'
-  if (r === 'implementation' || r === 'implements') return '#6B3FA0'
-  return '#1E4FA0'
+  if (r === 'authored') return 'var(--orange)'
+  if (r === 'model') return 'var(--copper)'
+  if (r === 'dataset') return 'var(--cyan)'
+  if (r === 'implementation' || r === 'implements') return 'var(--purple)'
+  return 'var(--accent)'
 }
 
 const radius = d => Number(d.size) || SIZES[d.type] || 9
@@ -107,8 +107,8 @@ export default function Graph({ data, height = 420, depth, onDepthChange }) {
       .enter().append('circle')
       .attr('r', radius)
       // type decides the fill, seed / top influential nodes get a ring instead
-      .attr('fill', d => COLORS[d.type] || '#6E6858')
-      .attr('stroke', d => d.seed ? '#2E7D46' : d.is_top_influential ? '#ffffff' : '#FDFCF8')
+      .attr('fill', d => COLORS[d.type] || 'var(--muted)')
+      .attr('stroke', d => d.seed ? 'var(--green)' : d.is_top_influential ? 'var(--text)' : 'var(--bg)')
       .attr('stroke-width', d => d.seed ? 3 : d.is_top_influential ? 2.5 : 2)
       .style('cursor', 'pointer')
       .call(
@@ -124,9 +124,9 @@ export default function Graph({ data, height = 420, depth, onDepthChange }) {
       .selectAll('text')
       .data(nodes.filter(showLabel))
       .enter().append('text')
-      .attr('fill', '#44516E')
+      .attr('fill', 'var(--text-secondary)')
       .attr('font-size', 11)
-      .attr('font-family', '-apple-system, system-ui, sans-serif')
+      .attr('font-family', 'var(--sans-ui)')
       .attr('text-anchor', 'middle')
       .attr('dy', d => -radius(d) - 6)
       .attr('pointer-events', 'none')
@@ -141,13 +141,13 @@ export default function Graph({ data, height = 420, depth, onDepthChange }) {
     const tip = d3.select(el)
       .append('div')
       .style('position', 'absolute')
-      .style('background', '#FAF6EC')
-      .style('border', '1px solid #D9D2BE')
+      .style('background', 'var(--panel2)')
+      .style('border', '1px solid var(--border2)')
       .style('border-radius', '6px')
       .style('padding', '8px 11px')
       .style('font-size', '12px')
       .style('line-height', '1.6')
-      .style('color', '#2B3A55')
+      .style('color', 'var(--text)')
       .style('max-width', '220px')
       .style('pointer-events', 'none')
       .style('opacity', '0')
@@ -158,17 +158,17 @@ export default function Graph({ data, height = 420, depth, onDepthChange }) {
       .on('mouseover', (event, d) => {
         // labels, years and counts come from external APIs, so escape every value
         const lbl = String(d.label || d.id || '').replace(/^TOPIC:\s*/i, '')
-        const color = COLORS[d.type] || '#6E6858'
+        const color = COLORS[d.type] || 'var(--muted)'
         let html = `<span style="color:${color};font-weight:600">${escapeHtml(String(d.type || '').toUpperCase())}</span><br/>`
         html += escapeHtml(`${lbl.substring(0, 80)}${lbl.length > 80 ? '…' : ''}`)
-        if (d.year) html += `<br/><span style="color:#6E6858">Year: ${escapeHtml(d.year)}</span>`
-        if (d.citations) html += `<br/><span style="color:#6E6858">Citations: ${escapeHtml(d.citations.toLocaleString())}</span>`
-        if (d.stars) html += `<br/><span style="color:#B08A00">⭐ ${escapeHtml(d.stars.toLocaleString())}</span>`
-        if (d.pagerank != null) html += `<br/><span style="color:#1E4FA0">PageRank: ${escapeHtml(d.pagerank)}</span>`
-        if (d.betweenness != null) html += `<br/><span style="color:#6B3FA0">Betweenness: ${escapeHtml(d.betweenness)}</span>`
-        if (d.community != null) html += `<br/><span style="color:#B08A00">Cluster: ${escapeHtml(d.community)}</span>`
-        if (d.is_top_influential) html += `<br/><span style="color:#ffffff">Top influential</span>`
-        if (d.seed) html += `<br/><span style="color:#2E7D46">Seed paper</span>`
+        if (d.year) html += `<br/><span style="color:var(--muted)">Year: ${escapeHtml(d.year)}</span>`
+        if (d.citations) html += `<br/><span style="color:var(--muted)">Citations: ${escapeHtml(d.citations.toLocaleString())}</span>`
+        if (d.stars) html += `<br/><span style="color:var(--orange)">★ ${escapeHtml(d.stars.toLocaleString())}</span>`
+        if (d.pagerank != null) html += `<br/><span style="color:var(--accent)">PageRank: ${escapeHtml(d.pagerank)}</span>`
+        if (d.betweenness != null) html += `<br/><span style="color:var(--purple)">Betweenness: ${escapeHtml(d.betweenness)}</span>`
+        if (d.community != null) html += `<br/><span style="color:var(--orange)">Cluster: ${escapeHtml(d.community)}</span>`
+        if (d.is_top_influential) html += `<br/><span style="color:var(--text)">Top influential</span>`
+        if (d.seed) html += `<br/><span style="color:var(--green)">Seed paper</span>`
         tip.html(html)
           .style('opacity', '1')
           .style('left', (event.offsetX + 14) + 'px')
@@ -203,22 +203,22 @@ export default function Graph({ data, height = 420, depth, onDepthChange }) {
   const hasNodes = data?.nodes?.length > 0
 
   return (
-    <div style={{ width: '100%' }}>
+    <div className="ri-graph" style={{ width: '100%' }}>
       {onDepthChange && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, fontSize: 12, color: '#6E6858' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, fontSize: 12, color: 'var(--muted)' }}>
           <span>Traversal depth</span>
           <input
             type="range" aria-label="Traversal depth in hops" aria-valuetext={`${depth || 1}-hop`} min={1} max={3} step={1} value={depth || 1}
             onChange={e => onDepthChange(Number(e.target.value))}
-            style={{ flex: 1, accentColor: '#1E4FA0', cursor: 'pointer' }}
+            style={{ flex: 1, accentColor: 'var(--accent)', cursor: 'pointer' }}
           />
-          <span style={{ color: '#1E4FA0', fontWeight: 600, minWidth: 42, textAlign: 'right' }}>{depth || 1}-hop</span>
+          <span style={{ color: 'var(--accent)', fontWeight: 600, minWidth: 42, textAlign: 'right' }}>{depth || 1}-hop</span>
         </div>
       )}
       <div
         style={{
           width: '100%', height, position: 'relative',
-          background: '#FDFCF8', borderRadius: 8, overflow: 'hidden',
+          background: 'var(--bg)', borderRadius: 8, overflow: 'hidden',
         }}
       >
         <div ref={containerRef} style={{ position: 'absolute', inset: 0 }} />
@@ -226,21 +226,21 @@ export default function Graph({ data, height = 420, depth, onDepthChange }) {
           <div style={{
             position: 'absolute', inset: 0, display: 'flex',
             alignItems: 'center', justifyContent: 'center',
-            color: '#6E6858', fontSize: 13,
+            color: 'var(--muted)', fontSize: 13,
           }}>
             No graph data
           </div>
         )}
       </div>
       {hasNodes && (
-        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginTop: 8, fontSize: 11, color: '#6E6858' }}>
-          {[['#1E4FA0', 'Topic'], ['#6E6858', 'Paper'], ['#BF6210', 'Model'], ['#0E7490', 'Dataset'], ['#6B3FA0', 'Repo'], ['#B08A00', 'Author'], ['#2E7D46', 'Root']].map(([c, l]) => (
+        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginTop: 8, fontSize: 11, color: 'var(--muted)' }}>
+          {[['var(--accent)', 'Topic'], ['var(--muted)', 'Paper'], ['var(--copper)', 'Model'], ['var(--cyan)', 'Dataset'], ['var(--purple)', 'Repo'], ['var(--orange)', 'Author'], ['var(--green)', 'Root']].map(([c, l]) => (
             <span key={l} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: c, display: 'inline-block' }} />
               {l}
             </span>
           ))}
-          <span style={{ marginLeft: 'auto', color: '#8A8375' }}>Scroll to zoom · Drag to pan</span>
+          <span style={{ marginLeft: 'auto', color: 'var(--muted2)' }}>Scroll to zoom · Drag to pan</span>
         </div>
       )}
     </div>

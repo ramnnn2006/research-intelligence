@@ -7,8 +7,9 @@ import { DocSkeleton } from '../components/Skeleton'
 import { useNotifyDone } from '../components/Toast'
 import RepoList from '../components/RepoList'
 import { toText, asArray, safeHttpUrl } from '../utils/safe'
+import Ic from '../components/Ic'
 
-const PC = ['#1E4FA0', '#6B3FA0', '#2E7D46', '#B08A00']
+const PC = ['var(--accent)', 'var(--purple)', 'var(--green)', 'var(--orange)']
 
 export default function Roadmap() {
   // follows the header topic until edited here
@@ -65,27 +66,27 @@ export default function Roadmap() {
     <div style={{ height: '100%', overflowY: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
 
       {/* Input */}
-      <div style={{ background: '#FAF6EC', border: '1px solid #E6E0D0', borderRadius: 8, padding: 20, flexShrink: 0 }}>
+      <div style={{ background: 'var(--panel2)', border: '1px solid var(--border)', borderRadius: 8, padding: 20, flexShrink: 0 }}>
         <h2 className="ri-title" style={{ fontSize: 18, marginBottom: 4 }}>Research Roadmap Generator</h2>
-        <p style={{ color: '#6E6858', fontSize: 13, marginBottom: 14 }}>
+        <p style={{ color: 'var(--muted)', fontSize: 13, marginBottom: 14 }}>
           Structured learning plan with phases, tasks, key papers, and skills
         </p>
         <div className="ri-form-row" style={{ display: 'flex', gap: 10 }}>
-          <input
+          <input name="topic" autoComplete="off"
             value={topic} onChange={e => setTopic(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && run()}
             placeholder="e.g. multimodal learning for robotics" aria-label="multimodal learning for robotics"
-            style={{ flex: 1, background: '#FFFFFF', border: '1px solid #D9D2BE', borderRadius: 6, color: '#2B3A55', padding: '8px 12px', fontSize: 14, outline: 'none' }}
-            onFocus={e => e.target.style.borderColor = '#1E4FA0'}
-            onBlur={e => e.target.style.borderColor = '#D9D2BE'}
+            style={{ flex: 1, background: 'var(--panel)', border: '1px solid var(--border2)', borderRadius: 6, color: 'var(--text)', padding: '8px 12px', fontSize: 14 }}
+            onFocus={e => e.target.style.borderColor = 'var(--accent)'}
+            onBlur={e => e.target.style.borderColor = 'var(--border2)'}
           />
           <button onClick={run} disabled={loading || !topic.trim()}
-            style={{ background: loading ? '#E6E0D0' : '#1E4FA0', color: loading ? '#6E6858' : '#FFFFFF', border: 'none', borderRadius: 6, padding: '8px 20px', fontWeight: 600, fontSize: 14, cursor: loading ? 'not-allowed' : 'pointer' }}>
+            style={{ background: loading ? 'var(--border)' : 'var(--accent)', color: loading ? 'var(--muted)' : 'var(--on-accent)', border: 'none', borderRadius: 6, padding: '8px 20px', fontWeight: 600, fontSize: 14, cursor: loading ? 'not-allowed' : 'pointer' }}>
             {loading ? <><Spinner />Building…</> : 'Build Roadmap'}
           </button>
         </div>
         <ErrorNote error={error} />
-        {loading && <p style={{ color: '#6E6858', fontSize: 12, marginTop: 8 }}>Fetching papers and building roadmap — ~20s…</p>}
+        {loading && <p style={{ color: 'var(--muted)', fontSize: 12, marginTop: 8 }}>Fetching papers and building roadmap — ~20s…</p>}
       </div>
 
       {loading && <DocSkeleton label="Building roadmap" />}
@@ -96,22 +97,22 @@ export default function Roadmap() {
           {/* Phases */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {r.overview && (
-              <div style={{ background: '#FAF6EC', border: '1px solid #E6E0D0', borderLeft: '3px solid #1E4FA0', borderRadius: 8, padding: '14px 16px', fontSize: 13, color: '#6E6858', lineHeight: 1.7 }}>
+              <div style={{ background: 'var(--panel2)', border: '1px solid var(--border)', borderLeft: '3px solid var(--accent)', borderRadius: 8, padding: '14px 16px', fontSize: 13, color: 'var(--muted)', lineHeight: 1.7 }}>
                 {r.overview}
               </div>
             )}
 
             {r.phases.map((phase, i) => (
-              <div key={i} style={{ background: '#FAF6EC', border: '1px solid #E6E0D0', borderLeft: `3px solid ${PC[i % 4]}`, borderRadius: 8, padding: 16 }}>
+              <div key={i} style={{ background: 'var(--panel2)', border: '1px solid var(--border)', borderLeft: `3px solid ${PC[i % 4]}`, borderRadius: 8, padding: 16 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
-                  <span style={{ background: `${PC[i % 4]}18`, color: PC[i % 4], padding: '3px 10px', borderRadius: 99, fontSize: 12, fontWeight: 700 }}>
+                  <span style={{ background: `color-mix(in srgb, ${PC[i % 4]} 9.4%, transparent)`, color: PC[i % 4], padding: '3px 10px', borderRadius: 99, fontSize: 12, fontWeight: 700 }}>
                     Phase {i + 1}
                   </span>
-                  <span style={{ fontWeight: 600, fontSize: 14, color: '#2B3A55' }}>
+                  <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)' }}>
                     {phase.phase.replace(/^Phase \d+[:\-\s]*/i, '')}
                   </span>
                   {phase.duration && (
-                    <span style={{ marginLeft: 'auto', fontSize: 11, color: '#6E6858', background: '#FFFFFF', padding: '2px 8px', borderRadius: 4 }}>
+                    <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--muted)', background: 'var(--panel)', padding: '2px 8px', borderRadius: 4 }}>
                       ⏱ {phase.duration}
                     </span>
                   )}
@@ -120,9 +121,9 @@ export default function Roadmap() {
                 {/* Tasks */}
                 {phase.tasks.length > 0 && (
                   <div style={{ marginBottom: 14 }}>
-                    <div style={{ fontSize: 11, color: '#8A8375', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Tasks</div>
+                    <div style={{ fontSize: 11, color: 'var(--muted2)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Tasks</div>
                     {phase.tasks.map((t, j) => (
-                      <div key={j} style={{ display: 'flex', gap: 8, fontSize: 13, color: '#44516E', marginBottom: 6, lineHeight: 1.55 }}>
+                      <div key={j} style={{ display: 'flex', gap: 8, fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6, lineHeight: 1.55 }}>
                         <span style={{ color: PC[i % 4], flexShrink: 0, marginTop: 1 }}>▸</span>
                         {t}
                       </div>
@@ -133,7 +134,7 @@ export default function Roadmap() {
                 {/* Key Papers — with direct URLs from LLM */}
                 {phase.papers.length > 0 && (
                   <div>
-                    <div style={{ fontSize: 11, color: '#8A8375', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Key Papers</div>
+                    <div style={{ fontSize: 11, color: 'var(--muted2)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Key Papers</div>
                     {phase.papers.map((p, j) => {
                       // LLM now returns {title, url} objects; fallback to string + fuzzy match
                       const isObj  = p && typeof p === 'object'
@@ -144,21 +145,21 @@ export default function Roadmap() {
                       const url = pUrl || (matched ? safeHttpUrl(matched.url || matched.id) : null)
                       const meta = matched || (isObj ? p : null)
                       return (
-                        <div key={j} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '6px 0', borderBottom: j < phase.papers.length - 1 ? '1px solid #E6E0D0' : 'none' }}>
-                          <span style={{ color: '#B08A00', flexShrink: 0 }}>📄</span>
+                        <div key={j} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '6px 0', borderBottom: j < phase.papers.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                          <span style={{ color: 'var(--orange)', flexShrink: 0 }}><Ic d="doc" /></span>
                           <div style={{ flex: 1 }}>
                             {url ? (
                               <a href={url} target="_blank" rel="noreferrer"
-                                style={{ fontSize: 12, color: '#1E4FA0', lineHeight: 1.45, display: 'block', textDecoration: 'none' }}
+                                style={{ fontSize: 12, color: 'var(--accent)', lineHeight: 1.45, display: 'block', textDecoration: 'none' }}
                                 onMouseEnter={e => e.target.style.textDecoration = 'underline'}
                                 onMouseLeave={e => e.target.style.textDecoration = 'none'}>
                                 {pTitle}
                               </a>
                             ) : (
-                              <span style={{ fontSize: 12, color: '#6E6858', lineHeight: 1.45 }}>{pTitle}</span>
+                              <span style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.45 }}>{pTitle}</span>
                             )}
                             {Array.isArray(meta?.authors) && (
-                              <div style={{ fontSize: 11, color: '#8A8375', marginTop: 2 }}>
+                              <div style={{ fontSize: 11, color: 'var(--muted2)', marginTop: 2 }}>
                                 {meta.authors.slice(0, 2).map(toText).join(', ')}
                                 {meta.year ? ` · ${toText(meta.year)}` : ''}
                                 {meta.citations ? ` · ${toText(meta.citations)} citations` : ''}
@@ -177,10 +178,10 @@ export default function Roadmap() {
           {/* Right sidebar: skills + resources + papers list */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {r.key_skills.length > 0 && (
-              <div style={{ background: '#FAF6EC', border: '1px solid #E6E0D0', borderRadius: 8, padding: 14 }}>
-                <h3 style={{ fontSize: 13, marginBottom: 10, color: '#6B3FA0', fontWeight: 600 }}>🎯 Key Skills</h3>
+              <div style={{ background: 'var(--panel2)', border: '1px solid var(--border)', borderRadius: 8, padding: 14 }}>
+                <h3 style={{ fontSize: 13, marginBottom: 10, color: 'var(--purple)', fontWeight: 600 }}><Ic d="target" /> Key Skills</h3>
                 {r.key_skills.map((s, i) => (
-                  <div key={i} style={{ background: 'rgba(188,140,255,.08)', border: '1px solid rgba(188,140,255,.18)', borderRadius: 5, padding: '6px 10px', fontSize: 12, color: '#44516E', marginBottom: 6, lineHeight: 1.45 }}>
+                  <div key={i} style={{ background: 'rgba(188,140,255,.08)', border: '1px solid rgba(188,140,255,.18)', borderRadius: 5, padding: '6px 10px', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6, lineHeight: 1.45 }}>
                     {s}
                   </div>
                 ))}
@@ -188,10 +189,10 @@ export default function Roadmap() {
             )}
 
             {r.resources.length > 0 && (
-              <div style={{ background: '#FAF6EC', border: '1px solid #E6E0D0', borderRadius: 8, padding: 14 }}>
-                <h3 style={{ fontSize: 13, marginBottom: 10, color: '#B08A00', fontWeight: 600 }}>📚 Resources</h3>
+              <div style={{ background: 'var(--panel2)', border: '1px solid var(--border)', borderRadius: 8, padding: 14 }}>
+                <h3 style={{ fontSize: 13, marginBottom: 10, color: 'var(--orange)', fontWeight: 600 }}><Ic d="books" /> Resources</h3>
                 {r.resources.map((res, i) => (
-                  <div key={i} style={{ fontSize: 12, color: '#6E6858', padding: '5px 0', borderBottom: i < r.resources.length - 1 ? '1px solid #E6E0D0' : 'none', lineHeight: 1.5 }}>
+                  <div key={i} style={{ fontSize: 12, color: 'var(--muted)', padding: '5px 0', borderBottom: i < r.resources.length - 1 ? '1px solid var(--border)' : 'none', lineHeight: 1.5 }}>
                     {res}
                   </div>
                 ))}
@@ -205,19 +206,19 @@ export default function Roadmap() {
 
             {/* All fetched papers with links */}
             {result?.papers?.length > 0 && (
-              <div style={{ background: '#FAF6EC', border: '1px solid #E6E0D0', borderRadius: 8, padding: 14 }}>
-                <h3 style={{ fontSize: 13, marginBottom: 10, color: '#6E6858', fontWeight: 600 }}>
-                  📑 All Papers ({result.papers.length})
+              <div style={{ background: 'var(--panel2)', border: '1px solid var(--border)', borderRadius: 8, padding: 14 }}>
+                <h3 style={{ fontSize: 13, marginBottom: 10, color: 'var(--muted)', fontWeight: 600 }}>
+                  <Ic d="doc" /> All Papers ({result.papers.length})
                 </h3>
                 {result.papers.map((p, i) => (
-                  <div key={i} style={{ paddingBottom: 8, marginBottom: 8, borderBottom: i < result.papers.length - 1 ? '1px solid #E6E0D0' : 'none' }}>
+                  <div key={i} style={{ paddingBottom: 8, marginBottom: 8, borderBottom: i < result.papers.length - 1 ? '1px solid var(--border)' : 'none' }}>
                     <a href={safeHttpUrl(p.url || p.id) || undefined} target="_blank" rel="noreferrer"
-                      style={{ fontSize: 12, color: '#1E4FA0', lineHeight: 1.4, display: 'block', textDecoration: 'none' }}
+                      style={{ fontSize: 12, color: 'var(--accent)', lineHeight: 1.4, display: 'block', textDecoration: 'none' }}
                       onMouseEnter={e => e.target.style.textDecoration = 'underline'}
                       onMouseLeave={e => e.target.style.textDecoration = 'none'}>
                       {p.title}
                     </a>
-                    <div style={{ fontSize: 11, color: '#8A8375', marginTop: 2 }}>
+                    <div style={{ fontSize: 11, color: 'var(--muted2)', marginTop: 2 }}>
                       {(p.authors || []).slice(0, 2).join(', ')}
                       {p.year ? ` · ${p.year}` : ''}
                       {p.citations ? ` · ${p.citations} cit.` : ''}
