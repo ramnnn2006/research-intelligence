@@ -13,6 +13,9 @@ import { ModelCard, DatasetCard } from '../components/HFArtifacts'
 import useDialog from '../hooks/useDialog'
 import { safeHttpUrl, toText, asArray } from '../utils/safe'
 import { NO_FILTERS, applyFilters, filtersActive as isFiltered, citationCoverage } from '../utils/paperFilters'
+import Ic from '../components/Ic'
+import useWindowedList from '../useWindowedList'
+import useVirtualList from '../useVirtualList'
 
 const SOURCE_LABEL = { arxiv: 'ArXiv', semantic_scholar: 'Scholar', openalex: 'OpenAlex' }
 const SORTS = [
@@ -31,6 +34,9 @@ export default function Discover() {
   const filtersActive = isFiltered(filters)
   // Mode: 'topic' | 'author'
   const [searchMode, setSearchMode] = useState('topic')
+  const [queryError, setQueryError] = useState('')
+  const queryRef = useRef(null)
+  const authorRef = useRef(null)
 
   // Topic search state (the field follows the header topic until edited here)
   const [query, setQuery, commitQuery] = useTopicField()
@@ -44,6 +50,44 @@ export default function Discover() {
   const [subgraphError, setSubgraphError] = useState('')
   const [showGraph, setShowGraph]   = useState(true)
   const [activeTab, setActiveTab]   = useState('papers') // 'papers' | 'models' | 'datasets' | 'repos'
+
+  // deep-link: reflect the result tab and active filters in the URL hash so a
+  // refresh, a shared link, or browser back/forward restores the same view.
+  // Filters restored from the URL survive the next search (they are the point
+  // of the shared link); later searches reset filters as usual.
+  const restoredFromUrl = useRef(false)
+  const skipFirstWrite = useRef(true)
+  React.useEffect(() => {
+    function fromHash() {
+      if (!location.hash.startsWith('#discover')) return
+      const qs = location.hash.split('?')[1] || ''
+      const p = new URLSearchParams(qs)
+      const t = p.get('t')
+      if (t && ['papers', 'models', 'datasets', 'repos'].includes(t)) setActiveTab(t)
+      setFilters(f => ({ ...f,
+        text: p.get('q') ?? '',
+        since: p.get('year') ?? 'any',
+        minCites: p.get('minc') ?? '',
+        sort: p.get('sort') ?? 'relevance' }))
+      if (qs) restoredFromUrl.current = true
+    }
+    fromHash()
+    window.addEventListener('hashchange', fromHash)
+    return () => window.removeEventListener('hashchange', fromHash)
+  }, [])
+  React.useEffect(() => {
+    if (skipFirstWrite.current) { skipFirstWrite.current = false; return }
+    if (!location.hash.startsWith('#discover')) return
+    const p = new URLSearchParams()
+    if (activeTab !== 'papers') p.set('t', activeTab)
+    if (filters.text) p.set('q', filters.text)
+    if (filters.since !== 'any') p.set('year', filters.since)
+    if (filters.minCites !== '' && filters.minCites != null) p.set('minc', String(filters.minCites))
+    if (filters.sort !== 'relevance') p.set('sort', filters.sort)
+    const qs = p.toString()
+    const target = qs ? `#discover?${qs}` : '#discover'
+    if (location.hash !== target) history.pushState(null, '', target)
+  }, [activeTab, filters])
 
   // Neo4j citation subgraph (depth slider) and export
   const [depth, setDepth]       = useState(1)
@@ -100,7 +144,9 @@ export default function Discover() {
   }
 
   async function searchTopic() {
-    if (!query.trim() || loading) return
+    if (loading) return
+    if (!query.trim()) { setQueryError('Enter a topic to search.'); queryRef.current?.focus(); return }
+    setQueryError('')
     const q = query
     commitQuery(q)
     setLoading(true); setError('')
@@ -111,19 +157,22 @@ export default function Discover() {
       // GitHub and Hugging Face are always fetched server-side regardless
       const res = await api.search(q, sources, 12)
       setResult(res)
-      setFilters(NO_FILTERS)
+      const keepRestored = restoredFromUrl.current
+      restoredFromUrl.current = false
+      if (!keepRestored) setFilters(NO_FILTERS)
       setSearchedQuery(q)
       notify(`Search finished: ${res?.papers?.length || 0} papers for "${q}"`)
       // new result: drop any subgraph (and in-flight subgraph request) and reset depth
       resetSubgraph()
-      setActiveTab('papers')
+      if (!keepRestored) setActiveTab('papers')
     } catch (e) { setError(e.message); notify(`Search failed: ${e.message}`, 'error') }
     finally { setLoading(false) }
   }
 
   async function searchAuthor(name) {
     const aName = (name !== undefined ? name : authorQuery).trim()
-    if (!aName) return
+    if (!aName) { setAuthorError('Enter an author name to search.'); authorRef.current?.focus(); return }
+    setAuthorError('')
     // a newer author search (e.g. clicking another author) supersedes the running one
     const id = ++authorReq.current
     setAuthorQuery(aName)
@@ -147,7 +196,13 @@ export default function Discover() {
     searchAuthor(authorName)
   }
 
-  const visiblePapers = applyFilters(asArray(result?.papers), filters)
+  // memoized: a fresh array identity every render would reset useWindowedList's count
+  const visiblePapers = React.useMemo(() => applyFilters(asArray(result?.papers), filters), [result?.papers, filters])
+  const papersWin = useWindowedList(visiblePapers)
+  // >50 items: bounded virtualization keeps the DOM small; <=50: incremental sentinel list
+  const papersVirt = useVirtualList(visiblePapers)
+  const modelsWin = useWindowedList(asArray(result?.models))
+  const datasetsWin = useWindowedList(asArray(result?.datasets))
   const coverage = citationCoverage(asArray(result?.papers))
   const scholarMissing = scholar && result && !asArray(result.papers).some(p => p.source === 'semantic_scholar')
 
@@ -166,17 +221,17 @@ export default function Discover() {
     <div style={{ height: '100%', overflowY: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
 
       {/* Search Header Container */}
-      <div style={{ background: '#FAF6EC', border: '1px solid #E6E0D0', borderRadius: 8, padding: 20, flexShrink: 0 }}>
+      <div style={{ background: 'var(--panel2)', border: '1px solid var(--border)', borderRadius: 8, padding: 20, flexShrink: 0 }}>
         
         {/* Mode Toggle Pills */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+        <div className="ri-search-modes" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
           <button
             type="button"
             onClick={() => setSearchMode('topic')}
             style={{
-              background: searchMode === 'topic' ? '#16397A' : '#E6E0D0',
-              border: `1px solid ${searchMode === 'topic' ? '#1E4FA0' : '#D9D2BE'}`,
-              color: searchMode === 'topic' ? '#ffffff' : '#6E6858',
+              background: searchMode === 'topic' ? 'var(--accent2)' : 'var(--border)',
+              border: `1px solid ${searchMode === 'topic' ? 'var(--accent)' : 'var(--border2)'}`,
+              color: searchMode === 'topic' ? 'var(--on-accent)' : 'var(--text-secondary)',
               padding: '6px 16px',
               borderRadius: 20,
               fontSize: 13,
@@ -185,19 +240,19 @@ export default function Discover() {
               display: 'flex',
               alignItems: 'center',
               gap: 6,
-              transition: 'all 0.15s'
+              transition: 'background-color .15s, border-color .15s, color .15s, box-shadow .15s'
             }}
           >
-            📄 Search by Topic / Title
+            <Ic d="doc" /><span className="ri-mode-full">Search by Topic / Title</span><span className="ri-mode-short">Topic / title</span>
           </button>
 
           <button
             type="button"
             onClick={() => setSearchMode('author')}
             style={{
-              background: searchMode === 'author' ? '#6B3FA0' : '#E6E0D0',
-              border: `1px solid ${searchMode === 'author' ? '#6B3FA0' : '#D9D2BE'}`,
-              color: searchMode === 'author' ? '#ffffff' : '#6E6858',
+              background: searchMode === 'author' ? 'var(--purple)' : 'var(--border)',
+              border: `1px solid ${searchMode === 'author' ? 'var(--purple)' : 'var(--border2)'}`,
+              color: searchMode === 'author' ? 'var(--on-accent)' : 'var(--text-secondary)',
               padding: '6px 16px',
               borderRadius: 20,
               fontSize: 13,
@@ -206,10 +261,10 @@ export default function Discover() {
               display: 'flex',
               alignItems: 'center',
               gap: 6,
-              transition: 'all 0.15s'
+              transition: 'background-color .15s, border-color .15s, color .15s, box-shadow .15s'
             }}
           >
-            👤 Search by Author / Researcher
+            <Ic d="user" /><span className="ri-mode-full">Search by Author / Researcher</span><span className="ri-mode-short">Author</span>
           </button>
         </div>
 
@@ -217,40 +272,42 @@ export default function Discover() {
         {searchMode === 'topic' && (
           <div>
             <h2 className="ri-title" style={{ fontSize: 18, marginBottom: 4 }}>Research Paper Discovery</h2>
-            <p style={{ color: '#6E6858', fontSize: 13, marginBottom: 14 }}>
+            <p style={{ color: 'var(--muted)', fontSize: 13, marginBottom: 14 }}>
               Search papers from ArXiv &amp; Semantic Scholar, view citations, and explore GitHub, HF models &amp; datasets.
             </p>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-              <input
-                value={query} onChange={e => setQuery(e.target.value)}
+              <input name="query" autoComplete="off"
+                ref={queryRef} aria-invalid={queryError ? true : undefined}
+                value={query} onChange={e => { setQuery(e.target.value); if (queryError) setQueryError('') }}
                 onKeyDown={e => e.key === 'Enter' && searchTopic()}
-                placeholder="e.g. LoRA fine-tuning PEFT, deepseek reasoning, graph neural networks" aria-label="LoRA fine-tuning PEFT, deepseek reasoning, graph neural networks"
-                style={{ flex: 1, minWidth: 'min(260px, 100%)', background: '#FFFFFF', border: '1px solid #D9D2BE', borderRadius: 6, color: '#2B3A55', padding: '8px 12px', fontSize: 14, outline: 'none' }}
-                onFocus={e => e.target.style.borderColor = '#1E4FA0'}
-                onBlur={e => e.target.style.borderColor = '#D9D2BE'}
+                placeholder="e.g. LoRA fine-tuning PEFT, deepseek reasoning, graph neural networks" aria-label="Search papers by topic"
+                style={{ flex: 1, minWidth: 'min(260px, 100%)', background: 'var(--panel)', border: '1px solid var(--border2)', borderRadius: 6, color: 'var(--text)', padding: '8px 12px', fontSize: 14 }}
+                onFocus={e => e.target.style.borderColor = 'var(--accent)'}
+                onBlur={e => e.target.style.borderColor = 'var(--border2)'}
               />
-              <div style={{ display: 'flex', gap: 14, fontSize: 13, color: '#6E6858' }}>
+              {queryError && <div role="alert" style={{ flexBasis: '100%', color: 'var(--red-strong)', fontSize: 13 }}>{queryError}</div>}
+              <div style={{ display: 'flex', gap: 14, fontSize: 13, color: 'var(--muted)' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer' }}>
-                  <input type="checkbox" checked={arxiv} onChange={e => setArxiv(e.target.checked)} style={{ accentColor: '#1E4FA0' }} /> ArXiv
+                  <input type="checkbox" checked={arxiv} onChange={e => setArxiv(e.target.checked)} style={{ accentColor: 'var(--accent)' }} /> ArXiv
                 </label>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer' }}>
-                  <input type="checkbox" checked={scholar} onChange={e => setScholar(e.target.checked)} style={{ accentColor: '#1E4FA0' }} /> Scholar
+                  <input type="checkbox" checked={scholar} onChange={e => setScholar(e.target.checked)} style={{ accentColor: 'var(--accent)' }} /> Scholar
                 </label>
-                <span style={{ color: '#2E7D46', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
-                  🔧 GitHub <span style={{ color: '#8A8375' }}>(auto)</span>
+                <span style={{ color: 'var(--green)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <Ic d="github" /> GitHub <span style={{ color: 'var(--muted2)' }}>(auto)</span>
                 </span>
               </div>
               {!arxiv && !scholar && (
-                <div style={{ fontSize: 12, color: '#6E6858' }}>No paper source is ticked. Only GitHub and Hugging Face results will load, so Papers will be empty.</div>
+                <div style={{ fontSize: 12, color: 'var(--muted)' }}>No paper source is ticked. Only GitHub and Hugging Face results will load, so Papers will be empty.</div>
               )}
               <button onClick={searchTopic} disabled={loading || !query.trim()}
-                style={{ background: loading ? '#E6E0D0' : '#F4D90C', color: loading ? '#6E6858' : '#16397A', border: 'none', borderRadius: 6, padding: '8px 22px', fontWeight: 600, fontSize: 14, cursor: loading ? 'not-allowed' : 'pointer' }}>
+                style={{ background: loading ? 'var(--border)' : 'var(--yellow)', color: loading ? 'var(--muted)' : 'var(--yellow-ink)', border: 'none', borderRadius: 6, padding: '8px 22px', fontWeight: 600, fontSize: 14, cursor: loading ? 'not-allowed' : 'pointer' }}>
                 {loading ? <><Spinner />Searching…</> : 'Search'}
               </button>
             </div>
             <ErrorNote error={error} />
             {error && result && searchedQuery && (
-              <div style={{ fontSize: 12, color: '#6E6858', marginTop: 6 }}>The results below are still the earlier ones for "{searchedQuery}".</div>
+              <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 6 }}>The results below are still the earlier ones for "{searchedQuery}".</div>
             )}
           </div>
         )}
@@ -259,27 +316,28 @@ export default function Discover() {
         {searchMode === 'author' && (
           <div>
             <h2 className="ri-title" style={{ fontSize: 18, marginBottom: 4 }}>Author &amp; Researcher Portfolio Search</h2>
-            <p style={{ color: '#6E6858', fontSize: 13, marginBottom: 12 }}>
+            <p style={{ color: 'var(--muted)', fontSize: 13, marginBottom: 12 }}>
               Find all research papers authored by a researcher, their citation metrics, h-index, affiliations, and co-authors.
             </p>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-              <input
-                value={authorQuery} onChange={e => setAuthorQuery(e.target.value)}
+              <input name="author-query" autoComplete="off"
+                ref={authorRef} aria-invalid={authorError ? true : undefined}
+                value={authorQuery} onChange={e => { setAuthorQuery(e.target.value); if (authorError) setAuthorError('') }}
                 onKeyDown={e => e.key === 'Enter' && searchAuthor()}
                 placeholder="e.g. Geoffrey Hinton, Yann LeCun, Ashish Vaswani, Yoshua Bengio, Fei-Fei Li" aria-label="Geoffrey Hinton, Yann LeCun, Ashish Vaswani, Yoshua Bengio, Fei-Fei Li"
-                style={{ flex: 1, minWidth: 'min(260px, 100%)', background: '#FFFFFF', border: '1px solid #D9D2BE', borderRadius: 6, color: '#2B3A55', padding: '8px 12px', fontSize: 14, outline: 'none' }}
-                onFocus={e => e.target.style.borderColor = '#6B3FA0'}
-                onBlur={e => e.target.style.borderColor = '#D9D2BE'}
+                style={{ flex: 1, minWidth: 'min(260px, 100%)', background: 'var(--panel)', border: '1px solid var(--border2)', borderRadius: 6, color: 'var(--text)', padding: '8px 12px', fontSize: 14 }}
+                onFocus={e => e.target.style.borderColor = 'var(--purple)'}
+                onBlur={e => e.target.style.borderColor = 'var(--border2)'}
               />
               <button onClick={() => searchAuthor()} disabled={authorLoading || !authorQuery.trim()}
-                style={{ background: authorLoading ? '#E6E0D0' : '#6B3FA0', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 22px', fontWeight: 600, fontSize: 14, cursor: authorLoading ? 'not-allowed' : 'pointer' }}>
+                style={{ background: authorLoading ? 'var(--border)' : 'var(--purple)', color: 'var(--on-accent)', border: 'none', borderRadius: 6, padding: '8px 22px', fontWeight: 600, fontSize: 14, cursor: authorLoading ? 'not-allowed' : 'pointer' }}>
                 {authorLoading ? <><Spinner />Searching Author…</> : 'Search Author'}
               </button>
             </div>
 
             {/* Quick Author Suggestion Chips */}
             <div style={{ display: 'flex', gap: 8, marginTop: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 12, color: '#8A8375' }}>Try:</span>
+              <span style={{ fontSize: 12, color: 'var(--muted2)' }}>Try:</span>
               {['Ashish Vaswani', 'Geoffrey Hinton', 'Yann LeCun', 'Andrew Ng', 'Yoshua Bengio'].map((name, i) => (
                 <button
                   key={i}
@@ -287,15 +345,15 @@ export default function Discover() {
                   onClick={() => searchAuthor(name)}
                   style={{
                     background: 'none',
-                    border: '1px solid #D9D2BE',
+                    border: '1px solid var(--border2)',
                     borderRadius: 14,
-                    color: '#6E6858',
+                    color: 'var(--muted)',
                     fontSize: 11,
                     padding: '2px 10px',
                     cursor: 'pointer'
                   }}
-                  onMouseEnter={e => { e.target.style.color = '#44516E'; e.target.style.borderColor = '#1E4FA0' }}
-                  onMouseLeave={e => { e.target.style.color = '#6E6858'; e.target.style.borderColor = '#D9D2BE' }}
+                  onMouseEnter={e => { e.target.style.color = 'var(--text-secondary)'; e.target.style.borderColor = 'var(--accent)' }}
+                  onMouseLeave={e => { e.target.style.color = 'var(--muted)'; e.target.style.borderColor = 'var(--border2)' }}
                 >
                   {name}
                 </button>
@@ -317,37 +375,37 @@ export default function Discover() {
           {/* Stats + tab bar */}
           <div className="ri-restabs" style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', flexShrink: 0 }}>
             <button onClick={() => setActiveTab('papers')}
-              style={{ background: activeTab === 'papers' ? '#E6E0D0' : 'none', border: `1px solid ${activeTab === 'papers' ? '#1E4FA0' : '#E6E0D0'}`, borderRadius: 6, color: activeTab === 'papers' ? '#1E4FA0' : '#6E6858', padding: '5px 14px', fontSize: 13, cursor: 'pointer', fontWeight: 500 }}>
-              📄 Papers ({result.total})
+              style={{ background: activeTab === 'papers' ? 'var(--border)' : 'none', border: `1px solid ${activeTab === 'papers' ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 6, color: activeTab === 'papers' ? 'var(--accent)' : 'var(--muted)', padding: '5px 14px', fontSize: 13, cursor: 'pointer', fontWeight: 500 }}>
+              <Ic d="doc" /> Papers ({result.total})
             </button>
             <button onClick={() => setActiveTab('models')}
-              style={{ background: activeTab === 'models' ? '#E6E0D0' : 'none', border: `1px solid ${activeTab === 'models' ? '#BF6210' : '#E6E0D0'}`, borderRadius: 6, color: activeTab === 'models' ? '#BF6210' : '#6E6858', padding: '5px 14px', fontSize: 13, cursor: 'pointer', fontWeight: 500 }}>
-              🤗 HF Models ({result.models?.length || 0})
+              style={{ background: activeTab === 'models' ? 'var(--border)' : 'none', border: `1px solid ${activeTab === 'models' ? 'var(--copper)' : 'var(--border)'}`, borderRadius: 6, color: activeTab === 'models' ? 'var(--copper)' : 'var(--muted)', padding: '5px 14px', fontSize: 13, cursor: 'pointer', fontWeight: 500 }}>
+              <Ic d="box" /> HF Models ({result.models?.length || 0})
             </button>
             <button onClick={() => setActiveTab('datasets')}
-              style={{ background: activeTab === 'datasets' ? '#E6E0D0' : 'none', border: `1px solid ${activeTab === 'datasets' ? '#0E7490' : '#E6E0D0'}`, borderRadius: 6, color: activeTab === 'datasets' ? '#0E7490' : '#6E6858', padding: '5px 14px', fontSize: 13, cursor: 'pointer', fontWeight: 500 }}>
-              📊 Datasets ({result.datasets?.length || 0})
+              style={{ background: activeTab === 'datasets' ? 'var(--border)' : 'none', border: `1px solid ${activeTab === 'datasets' ? 'var(--cyan)' : 'var(--border)'}`, borderRadius: 6, color: activeTab === 'datasets' ? 'var(--cyan)' : 'var(--muted)', padding: '5px 14px', fontSize: 13, cursor: 'pointer', fontWeight: 500 }}>
+              <Ic d="database" /> Datasets ({result.datasets?.length || 0})
             </button>
             <button onClick={() => setActiveTab('repos')}
-              style={{ background: activeTab === 'repos' ? '#E6E0D0' : 'none', border: `1px solid ${activeTab === 'repos' ? '#6B3FA0' : '#E6E0D0'}`, borderRadius: 6, color: activeTab === 'repos' ? '#6B3FA0' : '#6E6858', padding: '5px 14px', fontSize: 13, cursor: 'pointer', fontWeight: 500 }}>
-              🔧 GitHub Repos ({result.repos?.length || 0})
+              style={{ background: activeTab === 'repos' ? 'var(--border)' : 'none', border: `1px solid ${activeTab === 'repos' ? 'var(--purple)' : 'var(--border)'}`, borderRadius: 6, color: activeTab === 'repos' ? 'var(--purple)' : 'var(--muted)', padding: '5px 14px', fontSize: 13, cursor: 'pointer', fontWeight: 500 }}>
+              <Ic d="github" /> GitHub Repos ({result.repos?.length || 0})
             </button>
-            <div style={{ background: '#FAF6EC', border: '1px solid #E6E0D0', borderRadius: 6, padding: '5px 12px', fontSize: 12, color: '#8A8375' }}>
-              🧠 {result.rag_count} in RAG
+            <div style={{ background: 'var(--panel2)', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 12px', fontSize: 12, color: 'var(--muted2)' }}>
+              <Ic d="rag" /> {result.rag_count} in RAG
             </div>
             {result.graph_source && (
               <div style={{
-                background: result.graph_source === 'neo4j' ? 'rgba(46,125,70,0.1)' : 'rgba(30,79,160,0.1)',
-                border: `1px solid ${result.graph_source === 'neo4j' ? 'rgba(46,125,70,0.3)' : 'rgba(30,79,160,0.3)'}`,
+                background: result.graph_source === 'neo4j' ? 'rgba(var(--green-rgb),0.1)' : 'rgba(var(--accent-rgb),0.1)',
+                border: `1px solid ${result.graph_source === 'neo4j' ? 'rgba(var(--green-rgb),0.3)' : 'rgba(var(--accent-rgb),0.3)'}`,
                 borderRadius: 6, padding: '5px 12px', fontSize: 12,
-                color: result.graph_source === 'neo4j' ? '#2E7D46' : '#1E4FA0'
+                color: result.graph_source === 'neo4j' ? 'var(--green)' : 'var(--accent)'
               }}>
-                {result.graph_source === 'neo4j' ? '🌿 Neo4j Graph' : '📊 NetworkX Graph'}
+                {result.graph_source === 'neo4j' ? <><Ic d="web" /> Neo4j Graph</> : <><Ic d="chart" /> NetworkX Graph</>}
               </div>
             )}
             <button onClick={() => setShowGraph(p => !p)}
-              style={{ background: 'none', border: '1px solid #D9D2BE', borderRadius: 6, color: '#6E6858', padding: '5px 12px', fontSize: 12, cursor: 'pointer', marginLeft: 'auto' }}>
-              {showGraph ? '⊟ Hide Graph' : '⊞ Show Graph'}
+              style={{ background: 'none', border: '1px solid var(--border2)', borderRadius: 6, color: 'var(--muted)', padding: '5px 12px', fontSize: 12, cursor: 'pointer', marginLeft: 'auto' }}>
+              <Ic d={showGraph ? 'minus' : 'plus'} /><span>{showGraph ? 'Hide graph' : 'Show graph'}</span>
             </button>
           </div>
 
@@ -358,12 +416,12 @@ export default function Discover() {
               {/* Papers tab */}
               {activeTab === 'papers' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <div style={{ color: '#6E6858', fontSize: 12, padding: '0 4px' }}>
-                    💡 <i>Tip: Click any paper or &ldquo;Citations &amp; Network&rdquo; to view incoming citations &amp; references. Click any author to view their full portfolio.</i>
+                  <div className="ri-result-tip" style={{ color: 'var(--muted)', fontSize: 12, padding: '0 4px' }}>
+                    <Ic d="bulb" /> <i>Tip: Click any paper or &ldquo;Citations &amp; Network&rdquo; to view incoming citations &amp; references. Click any author to view their full portfolio.</i>
                   </div>
                   {result.papers?.length > 0 && (
-                    <div className="ri-filters" style={{ background: '#FAF6EC', border: '1px solid #E6E0D0', borderRadius: 8, padding: '10px 12px' }}>
-                      <input type="text" value={filters.text} onChange={e => setFilter('text', e.target.value)}
+                    <div className="ri-filters" style={{ background: 'var(--panel2)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px' }}>
+                      <input name="filter-text" autoComplete="off" type="text" value={filters.text} onChange={e => setFilter('text', e.target.value)}
                         onKeyDown={e => e.key === 'Escape' && setFilter('text', '')}
                         placeholder="Filter within results…" aria-label="Filter within results" style={{ flex: '1 1 180px', minWidth: 140 }} />
                       <button type="button" className="ri-filter-toggle" aria-expanded={filtersOpen} onClick={() => setFiltersOpen(o => !o)}>
@@ -379,7 +437,7 @@ export default function Discover() {
                         </select>
                       </label>
                       <label title={coverage.known ? 'Papers with no citation count are hidden when this is set' : 'No citation counts came back for these results'}>Min citations
-                        <input type="number" min="0" value={filters.minCites} disabled={!coverage.known}
+                        <input name="min-citations" autoComplete="off" inputMode="numeric" type="number" min="0" value={filters.minCites} disabled={!coverage.known}
                           onChange={e => setFilter('minCites', e.target.value)} style={{ width: 70 }} />
                       </label>
                       {[...new Set(result.papers.map(p => p.source).filter(Boolean))].length > 1 && (
@@ -397,7 +455,7 @@ export default function Discover() {
                         </select>
                       </label>
                       </div>
-                      <span style={{ marginLeft: 'auto', color: '#8A8375' }} aria-live="polite">
+                      <span style={{ marginLeft: 'auto', color: 'var(--muted2)' }} aria-live="polite">
                         {filtersActive ? `Showing ${visiblePapers.length} of ${result.papers.length}` : `${result.papers.length} papers`}{searchedQuery ? ` for "${searchedQuery}"` : ''}
                       </span>
                       {(filtersActive || filters.sort !== 'relevance') && (
@@ -419,12 +477,31 @@ export default function Discover() {
                     </div>
                   )}
                   {!result.papers?.length
-                    ? <div style={{ color: '#8A8375', fontSize: 13, padding: 20, textAlign: 'center' }}>No papers found. Try different keywords.</div>
+                    ? <div style={{ color: 'var(--muted2)', fontSize: 13, padding: 20, textAlign: 'center' }}>No papers found. Try different keywords.</div>
                     : !visiblePapers.length
-                    ? <div style={{ color: '#8A8375', fontSize: 13, padding: 20, textAlign: 'center' }}>
+                    ? <div style={{ color: 'var(--muted2)', fontSize: 13, padding: 20, textAlign: 'center' }}>
                         No papers match these filters. <button type="button" className="ri-chip" onClick={() => setFilters(NO_FILTERS)}>Clear filters</button>
                       </div>
-                    : visiblePapers.map((p, i) => (
+                    : visiblePapers.length > 50
+                    ? (
+                      <div ref={papersVirt.ref}>
+                        <div style={{ height: papersVirt.topPad }} aria-hidden="true" />
+                        {papersVirt.visible.map(p => (
+                          <div key={p.id || p.url || p.title} data-vl-item style={{ marginBottom: 10 }}>
+                            <PaperCard
+                              paper={p}
+                              onViewCitations={setSelectedCitationPaper}
+                              onAuthorClick={handleAuthorClick}
+                            />
+                          </div>
+                        ))}
+                        <div style={{ height: papersVirt.bottomPad }} aria-hidden="true" />
+                        <div style={{ padding: 14, textAlign: 'center', color: 'var(--muted2)', fontSize: 13 }}>
+                          {papersVirt.total} papers, mounted around the viewport as you scroll
+                        </div>
+                      </div>
+                    )
+                    : papersWin.visible.map((p, i) => (
                       <div key={p.id || p.url || p.title} className="ri-enter" style={{ '--i': Math.min(i, 7) }}>
                         <PaperCard
                           paper={p}
@@ -434,6 +511,11 @@ export default function Discover() {
                       </div>
                     ))
                   }
+                  {visiblePapers.length <= 50 && papersWin.hasMore && (
+                    <div ref={papersWin.sentinelRef} style={{ padding: 14, textAlign: 'center', color: 'var(--muted2)', fontSize: 13 }}>
+                      Showing {papersWin.shown} of {papersWin.total} papers…
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -441,11 +523,16 @@ export default function Discover() {
               {activeTab === 'models' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {!result.models?.length ? (
-                    <div style={{ color: '#8A8375', fontSize: 13, padding: 20, textAlign: 'center' }}>
+                    <div style={{ color: 'var(--muted2)', fontSize: 13, padding: 20, textAlign: 'center' }}>
                       No Hugging Face models found matching this topic.
                     </div>
                   ) : (
-                    result.models.map((m, i) => <ModelCard key={i} model={m} />)
+                    modelsWin.visible.map((m, i) => <ModelCard key={i} model={m} />)
+                  )}
+                  {modelsWin.hasMore && (
+                    <div ref={modelsWin.sentinelRef} style={{ padding: 14, textAlign: 'center', color: 'var(--muted2)', fontSize: 13 }}>
+                      Showing {modelsWin.shown} of {modelsWin.total} models…
+                    </div>
                   )}
                 </div>
               )}
@@ -454,35 +541,40 @@ export default function Discover() {
               {activeTab === 'datasets' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {!result.datasets?.length ? (
-                    <div style={{ color: '#8A8375', fontSize: 13, padding: 20, textAlign: 'center' }}>
+                    <div style={{ color: 'var(--muted2)', fontSize: 13, padding: 20, textAlign: 'center' }}>
                       No Hugging Face benchmark datasets found matching this topic.
                     </div>
                   ) : (
-                    result.datasets.map((d, i) => <DatasetCard key={i} dataset={d} />)
+                    datasetsWin.visible.map((d, i) => <DatasetCard key={i} dataset={d} />)
+                  )}
+                  {datasetsWin.hasMore && (
+                    <div ref={datasetsWin.sentinelRef} style={{ padding: 14, textAlign: 'center', color: 'var(--muted2)', fontSize: 13 }}>
+                      Showing {datasetsWin.shown} of {datasetsWin.total} datasets…
+                    </div>
                   )}
                 </div>
               )}
 
               {/* Repos tab */}
               {activeTab === 'repos' && (
-                <RepoList repos={result.repos} title="🔧 GitHub Repos" />
+                <RepoList repos={result.repos} title="GitHub Repos" />
               )}
             </div>
 
             {/* Graph panel */}
             {showGraph && result.graph && (
-              <div style={{ background: '#FAF6EC', border: '1px solid #E6E0D0', borderRadius: 8, padding: 16, position: 'sticky', top: 0 }}>
+              <div style={{ background: 'var(--panel2)', border: '1px solid var(--border)', borderRadius: 8, padding: 16, position: 'sticky', top: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
                   <h3 style={{ fontSize: 13, fontWeight: 600 }}>{subgraph ? `Neo4j Subgraph (${subgraph.nodes?.length || 0} nodes)` : 'Knowledge Graph'}</h3>
                   {graphLoading && <Spinner />}
                   {subgraph && (
                     <button onClick={resetSubgraph}
-                      style={{ background: 'none', border: 'none', color: '#8A8375', fontSize: 11, cursor: 'pointer', padding: 0 }}>
+                      style={{ background: 'none', border: 'none', color: 'var(--muted2)', fontSize: 11, cursor: 'pointer', padding: 0 }}>
                       reset
                     </button>
                   )}
                   <button onClick={() => setShowExport(true)}
-                    style={{ marginLeft: 'auto', background: 'none', border: '1px solid #D9D2BE', borderRadius: 6, color: '#6E6858', padding: '3px 10px', fontSize: 11, cursor: 'pointer' }}>
+                    style={{ marginLeft: 'auto', background: 'none', border: '1px solid var(--border2)', borderRadius: 6, color: 'var(--muted)', padding: '3px 10px', fontSize: 11, cursor: 'pointer' }}>
                     ⤓ Export Subgraph
                   </button>
                 </div>
@@ -500,8 +592,8 @@ export default function Discover() {
 
           {/* Author Profile Hero Card */}
           <div style={{
-            background: 'linear-gradient(180deg, #FAF6EC 0%, #FFFFFF 100%)',
-            border: '1px solid #D9D2BE',
+            background: 'linear-gradient(180deg, var(--panel2) 0%, var(--panel) 100%)',
+            border: '1px solid var(--border2)',
             borderRadius: 10,
             padding: 20,
             display: 'flex',
@@ -514,23 +606,25 @@ export default function Discover() {
                   width: 52,
                   height: 52,
                   borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #6B3FA0 0%, #B08A00 100%)',
+                  background: 'var(--panel2)',
+                  border: '1px solid var(--border2)',
+                  color: 'var(--accent)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: 24,
-                  boxShadow: '0 4px 12px rgba(107,63,160,0.3)'
+                  fontSize: 22,
+                  fontWeight: 600
                 }}>
-                  👤
+                  {toText(authorInfo.name).charAt(0).toUpperCase()}
                 </div>
                 <div>
-                  <h2 style={{ fontSize: 20, fontWeight: 700, color: '#16397A', margin: '0 0 4px 0' }}>
+                  <h2 style={{ fontSize: 20, fontWeight: 600, color: 'var(--accent2)', margin: '0 0 4px 0' }}>
                     {toText(authorInfo.name)}
                   </h2>
-                  <div style={{ fontSize: 13, color: '#6E6858', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  <div style={{ fontSize: 13, color: 'var(--muted)', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     {authorAffiliations.length > 0 ? (
                       authorAffiliations.map((aff, i) => (
-                        <span key={i}>🏛️ {aff}{i < authorAffiliations.length - 1 ? ' ·' : ''}</span>
+                        <span key={i}><Ic d="uni" /> {aff}{i < authorAffiliations.length - 1 ? ' ·' : ''}</span>
                       ))
                     ) : (
                       <span>Researcher &amp; Computer Scientist</span>
@@ -541,21 +635,21 @@ export default function Discover() {
 
               {/* Badges / Metrics */}
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <div style={{ background: '#FAF6EC', border: '1px solid #D9D2BE', borderRadius: 8, padding: '6px 14px', textAlign: 'center' }}>
-                  <div style={{ fontSize: 11, color: '#6E6858', textTransform: 'uppercase', fontWeight: 600 }}>Total Works</div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: '#1E4FA0' }}>
+                <div style={{ background: 'var(--panel2)', border: '1px solid var(--border2)', borderRadius: 8, padding: '6px 14px', textAlign: 'center' }}>
+                  <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 500 }}>Total Works</div>
+                  <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--accent)' }}>
                     {authorResult.author?.works_count || authorResult.total_papers || 0}
                   </div>
                 </div>
-                <div style={{ background: '#FAF6EC', border: '1px solid #D9D2BE', borderRadius: 8, padding: '6px 14px', textAlign: 'center' }}>
-                  <div style={{ fontSize: 11, color: '#6E6858', textTransform: 'uppercase', fontWeight: 600 }}>Citations</div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: '#C13B2E' }}>
+                <div style={{ background: 'var(--panel2)', border: '1px solid var(--border2)', borderRadius: 8, padding: '6px 14px', textAlign: 'center' }}>
+                  <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 500 }}>Citations</div>
+                  <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>
                     {(Number(authorInfo.citation_count) || 0).toLocaleString()}
                   </div>
                 </div>
-                <div style={{ background: '#FAF6EC', border: '1px solid #D9D2BE', borderRadius: 8, padding: '6px 14px', textAlign: 'center' }}>
-                  <div style={{ fontSize: 11, color: '#6E6858', textTransform: 'uppercase', fontWeight: 600 }}>h-index</div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: '#B08A00' }}>
+                <div style={{ background: 'var(--panel2)', border: '1px solid var(--border2)', borderRadius: 8, padding: '6px 14px', textAlign: 'center' }}>
+                  <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 500 }}>h-index</div>
+                  <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>
                     {authorResult.author?.h_index || 'N/A'}
                   </div>
                 </div>
@@ -569,7 +663,7 @@ export default function Discover() {
                       border: '1px solid rgba(166,226,46,0.3)',
                       borderRadius: 8,
                       padding: '6px 12px',
-                      color: '#5A8A00',
+                      color: 'var(--lime)',
                       fontSize: 12,
                       textDecoration: 'none',
                       display: 'flex',
@@ -589,58 +683,58 @@ export default function Discover() {
             <button
               onClick={() => setAuthorTab('papers')}
               style={{
-                background: authorTab === 'papers' ? '#E6E0D0' : 'none',
-                border: `1px solid ${authorTab === 'papers' ? '#6B3FA0' : '#E6E0D0'}`,
+                background: authorTab === 'papers' ? 'var(--border)' : 'none',
+                border: `1px solid ${authorTab === 'papers' ? 'var(--purple)' : 'var(--border)'}`,
                 borderRadius: 6,
-                color: authorTab === 'papers' ? '#7A4FB8' : '#6E6858',
+                color: authorTab === 'papers' ? 'var(--purple)' : 'var(--muted)',
                 padding: '6px 16px',
                 fontSize: 13,
                 cursor: 'pointer',
                 fontWeight: 500
               }}
             >
-              📄 Research Papers ({authorResult.papers?.length || 0})
+              <Ic d="doc" /> Research Papers ({authorResult.papers?.length || 0})
             </button>
             <button
               onClick={() => setAuthorTab('coauthors')}
               style={{
-                background: authorTab === 'coauthors' ? '#E6E0D0' : 'none',
-                border: `1px solid ${authorTab === 'coauthors' ? '#B08A00' : '#E6E0D0'}`,
+                background: authorTab === 'coauthors' ? 'var(--border)' : 'none',
+                border: `1px solid ${authorTab === 'coauthors' ? 'var(--orange)' : 'var(--border)'}`,
                 borderRadius: 6,
-                color: authorTab === 'coauthors' ? '#7A5C00' : '#6E6858',
+                color: authorTab === 'coauthors' ? 'var(--ochre)' : 'var(--muted)',
                 padding: '6px 16px',
                 fontSize: 13,
                 cursor: 'pointer',
                 fontWeight: 500
               }}
             >
-              👥 Frequent Co-Authors ({authorResult.co_authors?.length || 0})
+              <Ic d="users" /> Frequent Co-Authors ({authorResult.co_authors?.length || 0})
             </button>
             <button
               onClick={() => setAuthorTab('graph')}
               style={{
-                background: authorTab === 'graph' ? '#E6E0D0' : 'none',
-                border: `1px solid ${authorTab === 'graph' ? '#1E4FA0' : '#E6E0D0'}`,
+                background: authorTab === 'graph' ? 'var(--border)' : 'none',
+                border: `1px solid ${authorTab === 'graph' ? 'var(--accent)' : 'var(--border)'}`,
                 borderRadius: 6,
-                color: authorTab === 'graph' ? '#1E4FA0' : '#6E6858',
+                color: authorTab === 'graph' ? 'var(--accent)' : 'var(--muted)',
                 padding: '6px 16px',
                 fontSize: 13,
                 cursor: 'pointer',
                 fontWeight: 500
               }}
             >
-              🕸️ Collaboration Graph
+              <Ic d="web" /> Collaboration Graph
             </button>
 
             {authorTab === 'papers' && (
-              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#6E6858' }}>
+              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--muted)' }}>
                 <span>Sort by:</span>
                 <button
                   onClick={() => setAuthorSort('citations')}
                   style={{
-                    background: authorSort === 'citations' ? '#E6E0D0' : 'none',
-                    border: '1px solid #D9D2BE',
-                    color: authorSort === 'citations' ? '#1E4FA0' : '#6E6858',
+                    background: authorSort === 'citations' ? 'var(--border)' : 'none',
+                    border: '1px solid var(--border2)',
+                    color: authorSort === 'citations' ? 'var(--accent)' : 'var(--muted)',
                     borderRadius: 4,
                     padding: '2px 8px',
                     fontSize: 11,
@@ -652,9 +746,9 @@ export default function Discover() {
                 <button
                   onClick={() => setAuthorSort('year')}
                   style={{
-                    background: authorSort === 'year' ? '#E6E0D0' : 'none',
-                    border: '1px solid #D9D2BE',
-                    color: authorSort === 'year' ? '#1E4FA0' : '#6E6858',
+                    background: authorSort === 'year' ? 'var(--border)' : 'none',
+                    border: '1px solid var(--border2)',
+                    color: authorSort === 'year' ? 'var(--accent)' : 'var(--muted)',
                     borderRadius: 4,
                     padding: '2px 8px',
                     fontSize: 11,
@@ -671,7 +765,7 @@ export default function Discover() {
           {authorTab === 'papers' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {sortedAuthorPapers.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: 40, color: '#8A8375' }}>
+                <div style={{ textAlign: 'center', padding: 40, color: 'var(--muted2)' }}>
                   No papers found for this author.
                 </div>
               ) : (
@@ -694,8 +788,8 @@ export default function Discover() {
                 <div
                   key={i}
                   style={{
-                    background: '#FAF6EC',
-                    border: '1px solid #E6E0D0',
+                    background: 'var(--panel2)',
+                    border: '1px solid var(--border)',
                     borderRadius: 8,
                     padding: 14,
                     display: 'flex',
@@ -704,10 +798,10 @@ export default function Discover() {
                   }}
                 >
                   <div>
-                    <div style={{ fontWeight: 600, color: '#2B3A55', fontSize: 14 }}>
-                      👤 {toText(ca.name)}
+                    <div style={{ fontWeight: 600, color: 'var(--text)', fontSize: 14 }}>
+                      <Ic d="user" /> {toText(ca.name)}
                     </div>
-                    <div style={{ fontSize: 12, color: '#6E6858', marginTop: 2 }}>
+                    <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>
                       {toText(ca.collaborations)} joint publications
                     </div>
                   </div>
@@ -716,7 +810,7 @@ export default function Discover() {
                     style={{
                       background: 'rgba(107,63,160,0.15)',
                       border: '1px solid rgba(107,63,160,0.3)',
-                      color: '#7A4FB8',
+                      color: 'var(--purple)',
                       borderRadius: 6,
                       padding: '4px 10px',
                       fontSize: 12,
@@ -733,25 +827,25 @@ export default function Discover() {
 
           {/* Author Tab 3: Collaboration Graph */}
           {authorTab === 'graph' && (
-            <div style={{ background: '#FAF6EC', border: '1px solid #E6E0D0', borderRadius: 8, padding: 16 }}>
-              <div style={{ display: 'flex', gap: 16, marginBottom: 10, fontSize: 12, color: '#6E6858' }}>
+            <div style={{ background: 'var(--panel2)', border: '1px solid var(--border)', borderRadius: 8, padding: 16 }}>
+              <div style={{ display: 'flex', gap: 16, marginBottom: 10, fontSize: 12, color: 'var(--muted)' }}>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#B08A00', boxShadow: '0 0 0 2px #ffffff' }}></span>
+                  <span style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--orange)', boxShadow: '0 0 0 2px var(--on-accent)' }}></span>
                   Researcher (Gold, white ring)
                 </span>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#6E6858' }}></span>
+                  <span style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--muted)' }}></span>
                   Authored Papers (Gray)
                 </span>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#B08A00' }}></span>
+                  <span style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--orange)' }}></span>
                   Co-Authors (Gold)
                 </span>
               </div>
               {authorResult.graph?.nodes?.length > 1 ? (
                 <Graph data={authorResult.graph} height={500} />
               ) : (
-                <div style={{ textAlign: 'center', padding: 40, color: '#8A8375' }}>
+                <div style={{ textAlign: 'center', padding: 40, color: 'var(--muted2)' }}>
                   Not enough nodes to build author collaboration graph.
                 </div>
               )}
@@ -766,12 +860,12 @@ export default function Discover() {
         <div onClick={() => setShowExport(false)}
           style={{ position: 'fixed', inset: 0, background: 'rgba(1,4,9,.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
           <div ref={exportRef} role="dialog" aria-modal="true" aria-label="Export subgraph" tabIndex={-1} onClick={e => e.stopPropagation()}
-            style={{ background: '#FAF6EC', border: '1px solid #D9D2BE', borderRadius: 8, padding: 20, width: 'min(340px, calc(100vw - 32px))', display: 'flex', flexDirection: 'column', gap: 12, fontSize: 13 }}>
+            style={{ background: 'var(--panel2)', border: '1px solid var(--border2)', borderRadius: 8, padding: 20, width: 'min(340px, calc(100vw - 32px))', display: 'flex', flexDirection: 'column', gap: 12, fontSize: 13 }}>
             <h3 style={{ fontSize: 15 }}>Export Subgraph</h3>
-            <p style={{ color: '#6E6858', fontSize: 12 }}>
+            <p style={{ color: 'var(--muted)', fontSize: 12 }}>
               Seeds: papers found for "{searchedQuery}" · {depth}-hop traversal
             </p>
-            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, color: '#6E6858' }}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, color: 'var(--muted)' }}>
               What to export
               <select value={exportScope} onChange={e => setExportScope(e.target.value)} style={selectStyle}>
                 <option value="citations">Citation paths</option>
@@ -779,7 +873,7 @@ export default function Discover() {
                 <option value="topic">Whole topic subgraph</option>
               </select>
             </label>
-            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, color: '#6E6858' }}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, color: 'var(--muted)' }}>
               Format
               <select value={exportFormat} onChange={e => setExportFormat(e.target.value)} style={selectStyle}>
                 <option value="json">JSON (nodes + links)</option>
@@ -789,11 +883,11 @@ export default function Discover() {
             </label>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
               <button onClick={() => setShowExport(false)}
-                style={{ background: 'none', border: '1px solid #D9D2BE', borderRadius: 6, color: '#6E6858', padding: '6px 14px', cursor: 'pointer' }}>
+                style={{ background: 'none', border: '1px solid var(--border2)', borderRadius: 6, color: 'var(--muted)', padding: '6px 14px', cursor: 'pointer' }}>
                 Cancel
               </button>
               <button onClick={downloadExport}
-                style={{ background: '#1E4FA0', border: 'none', borderRadius: 6, color: '#FFFFFF', fontWeight: 600, padding: '6px 14px', cursor: 'pointer' }}>
+                style={{ background: 'var(--accent)', border: 'none', borderRadius: 6, color: 'var(--on-accent)', fontWeight: 600, padding: '6px 14px', cursor: 'pointer' }}>
                 Download
               </button>
             </div>
@@ -815,4 +909,4 @@ export default function Discover() {
   )
 }
 
-const selectStyle = { background: '#FFFFFF', border: '1px solid #D9D2BE', borderRadius: 6, color: '#2B3A55', padding: '6px 8px', fontSize: 13 }
+const selectStyle = { background: 'var(--panel)', border: '1px solid var(--border2)', borderRadius: 6, color: 'var(--text)', padding: '6px 8px', fontSize: 13 }
