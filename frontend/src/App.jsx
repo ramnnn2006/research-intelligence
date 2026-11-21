@@ -3,6 +3,8 @@ import { api } from './services/api'
 import ErrorBoundary from './components/ErrorBoundary'
 import { ToastProvider } from './components/Toast'
 import Landing from './Landing'
+import ThemeToggle from './components/ThemeToggle'
+import useTheme from './hooks/useTheme'
 import Discover from './pages/Discover'
 import Review from './pages/Review'
 import Survey from './pages/Survey'
@@ -59,15 +61,15 @@ const TABS = [
 function StatusBadge({ label, connected, title, showDetail }) {
   const color = connected ? 'var(--green)' : 'var(--muted2)'
   const badge = (
-    <span
+    <span translate="no"
       title={title} tabIndex={0} aria-label={`${label} ${connected ? 'active' : 'offline'}. ${title || ''}`}
       style={{
         fontSize: 10.5, padding: '2px 8px', borderRadius: 12,
         display: 'flex', alignItems: 'center', gap: 4, cursor: 'help', whiteSpace: 'nowrap',
         fontFamily: 'var(--serif-body)', letterSpacing: '.04em',
-        background: connected ? 'rgba(46,125,70,0.10)' : 'rgba(138,131,117,0.10)',
+        background: connected ? 'rgba(var(--green-rgb),0.10)' : 'rgba(138,131,117,0.10)',
         color,
-        border: `1px solid ${connected ? 'rgba(46,125,70,0.35)' : 'rgba(138,131,117,0.30)'}`,
+        border: `1px solid ${connected ? 'rgba(var(--green-rgb),0.35)' : 'rgba(138,131,117,0.30)'}`,
       }}
     >
       <span style={{ width: 6, height: 6, borderRadius: '50%', background: color, display: 'inline-block' }} />
@@ -103,12 +105,13 @@ function mongoTitle(info) {
 }
 
 export default function App() {
+  const [theme, toggleTheme] = useTheme()
   const [entered, setEntered] = useState(() => {
     try { return sessionStorage.getItem('ri.entered') === '1' } catch { return false }
   })
   const TAB_IDS = TABS.map(t => t.id)
   const [tab, setTab] = useState(() => {
-    const h = (typeof location !== 'undefined' ? location.hash : '').replace('#', '')
+    const h = (typeof location !== 'undefined' ? location.hash : '').replace('#', '').split('?')[0]
     return TAB_IDS.includes(h) ? h : 'discover'
   })
   const [topic, setTopic] = useState('')
@@ -129,9 +132,12 @@ export default function App() {
     if (!entered) { document.title = 'ResearchIQ'; return }
     const label = TABS.find(t => t.id === tab)?.label || ''
     document.title = `${label} · ResearchIQ`
-    if (location.hash !== `#${tab}`) {
-      if (firstSync.current) history.replaceState(null, '', `#${tab}`)
-      else history.pushState(null, '', `#${tab}`)
+    const cur = location.hash.replace('#', '')
+    const [curTab, curQuery] = cur.split('?')
+    if (curTab !== tab || ((tab !== 'discover' && tab !== 'history') && curQuery)) {
+      const keep = (tab === 'discover' || tab === 'history') && curQuery ? `?${curQuery}` : ''
+      if (firstSync.current) history.replaceState(null, '', `#${tab}${keep}`)
+      else history.pushState(null, '', `#${tab}${keep}`)
     }
     firstSync.current = false
   }, [tab, entered])
@@ -139,7 +145,7 @@ export default function App() {
   // browser back/forward or a hand-edited hash switches the page
   useEffect(() => {
     function onHash() {
-      const h = location.hash.replace('#', '')
+      const h = location.hash.replace('#', '').split('?')[0]
       if (TAB_IDS.includes(h)) setTab(h)
     }
     window.addEventListener('hashchange', onHash)
@@ -182,12 +188,15 @@ export default function App() {
   // a stable value: drawer or badge updates do not re-render every context consumer
   const topicValue = React.useMemo(() => ({ topic, setTopic }), [topic])
 
-  if (!entered) return <Landing onEnter={enter} />
+  const themeFooter = <footer className="ri-theme-footer"><ThemeToggle theme={theme} onToggle={toggleTheme} /></footer>
+  if (!entered) return <div className="ri-cover-shell"><Landing onEnter={enter} />{themeFooter}</div>
 
   return (
     <TopicContext.Provider value={topicValue}>
       <ToastProvider tab={tab} setTab={setTab}>
       <div className="ri-shell" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <a className="ri-skip" href="#ri-main">Skip to content</a>
+        <h1 className="ri-sr-only">ResearchIQ — {TABS.find(t => t.id === tab)?.label || 'Discover'}</h1>
         {/* Header */}
         <header className="hd">
           <div className="hd-brand">
@@ -196,7 +205,7 @@ export default function App() {
               title="Back to the cover page"
               style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
             >
-              <span className="hd-word">ResearchIQ</span>
+              <span className="hd-word" translate="no">ResearchIQ</span>
             </button>
             <span className="hd-badges">
               {neo4jInfo && <StatusBadge label="Neo4j" connected={!!neo4jInfo.connected} title={neo4jTitle(neo4jInfo)} />}
@@ -213,21 +222,21 @@ export default function App() {
 
           {/* Global topic bar */}
           <div className="hd-topic">
-            <input
+            <input name="topic" autoComplete="off"
               value={topic}
               onChange={e => setTopic(e.target.value)}
               onKeyDown={e => e.key === 'Escape' && setTopic('')}
               placeholder="Enter a research topic here…" aria-label="Enter a research topic here"
             />
             {topic && (
-              <button onClick={() => setTopic('')} title="Clear topic">✕</button>
+              <button onClick={() => setTopic('')} title="Clear topic" aria-label="Clear topic" style={{ padding: '4px 6px' }}>✕</button>
             )}
           </div>
 
           {menuOpen && <div className="hd-scrim" onClick={() => { setMenuOpen(false); menuBtn.current?.focus() }} aria-hidden="true" />}
           <nav id="hd-nav" ref={navRef} className={`hd-tabs${menuOpen ? ' open' : ''}`} aria-label="Pages">
             <div className="hd-drawer-head">
-              <span className="hd-word">ResearchIQ</span>
+              <span className="hd-word" translate="no">ResearchIQ</span>
               <button type="button" className="hd-drawer-x" aria-label="Close menu" onClick={() => { setMenuOpen(false); menuBtn.current?.focus() }}>✕</button>
             </div>
             <span className="hd-badges hd-badges-drawer">
@@ -246,7 +255,7 @@ export default function App() {
         </header>
 
         {/* Pages — all mounted, just show/hide to preserve state */}
-        <main style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
+        <main id="ri-main" tabIndex={-1} style={{ flex: 1, overflow: 'hidden', position: 'relative', outline: 'none' }}>
           {[
             ['discover', <MemoDiscover />],
             ['graph',    <MemoGraphAnalytics active={tab === 'graph'} />],
@@ -268,6 +277,7 @@ export default function App() {
             </div>
           ))}
         </main>
+        {themeFooter}
       </div>
       </ToastProvider>
     </TopicContext.Provider>

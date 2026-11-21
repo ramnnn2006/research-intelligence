@@ -72,10 +72,10 @@ export default function Landing({ onEnter }) {
       <nav>
         <a className="mark" href="#">R!</a>
         <div className="nav-links">
-          <a href="#how">[ HOW ]</a>
-          <a href="#sources">[ SOURCES ]</a>
-          <a href="#stack">[ STACK ]</a>
-          <button className="pill" onClick={onEnter}>OPEN THE APP</button>
+          <a href="#how">[ How ]</a>
+          <a href="#sources">[ Sources ]</a>
+          <a href="#stack">[ Stack ]</a>
+          <button className="pill" onClick={onEnter}>Open the app</button>
         </div>
       </nav>
 
@@ -83,11 +83,11 @@ export default function Landing({ onEnter }) {
         <h1>Research<br />
           <span className="l2">intelligence</span>
           <span className="doodle">
-            <svg viewBox="0 0 80 60" width="74" fill="none" stroke="#1E4FA0" strokeWidth="2">
-              <circle cx="14" cy="46" r="5" fill="#F3EDE2" />
-              <circle cx="40" cy="16" r="5" fill="#F4D90C" />
-              <circle cx="66" cy="40" r="5" fill="#F3EDE2" />
-              <circle cx="52" cy="54" r="4" fill="#F3EDE2" />
+            <svg viewBox="0 0 80 60" width="74" fill="none" stroke="var(--accent)" strokeWidth="2">
+              <circle cx="14" cy="46" r="5" fill="var(--cream)" />
+              <circle cx="40" cy="16" r="5" fill="var(--yellow)" />
+              <circle cx="66" cy="40" r="5" fill="var(--cream)" />
+              <circle cx="52" cy="54" r="4" fill="var(--cream)" />
               <path d="M18 42 L36 20 M44 20 L62 36 M19 46 L48 53 M55 51 L63 44" />
             </svg>
             <span className="doodle-cap">now indexing</span>
