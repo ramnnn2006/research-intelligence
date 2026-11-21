@@ -508,6 +508,15 @@ def export_subgraph_json(scope: str = Query(default="citations", pattern="^(cita
     return _download(json.dumps(data, indent=2, default=str), "application/json",
                      f"subgraph_{scope}_{depth}hop.json")
 
+def _csv_cell(value):
+    """Keep untrusted text inert when a spreadsheet opens an exported cell."""
+    if isinstance(value, str):
+        trimmed = value.lstrip(" \t\r\n\v\f\ufeff")
+        if value.startswith(("\t", "\r", "\n")) or trimmed.startswith(("=", "+", "-", "@")):
+            return "\'" + value
+    return value
+
+
 @router.get("/graph/export/csv")
 def export_subgraph_csv(scope: str = Query(default="citations", pattern="^(citations|authors|topic)$"),
                         topic: str = Query(default=""), paper_id: str = Query(default=""),
@@ -521,12 +530,12 @@ def export_subgraph_csv(scope: str = Query(default="citations", pattern="^(citat
         writer = csv.DictWriter(buf, fieldnames=["id", "label", "type", "year", "citations", "stars", "url"],
                                 extrasaction="ignore")
         writer.writeheader()
-        writer.writerows(data["nodes"])
+        writer.writerows({key: _csv_cell(value) for key, value in node.items()} for node in data["nodes"])
     else:
         labels = {n["id"]: n["label"] for n in data["nodes"]}
         writer = csv.writer(buf)
         writer.writerow(["source", "source_label", "relation", "target", "target_label"])
         for l in data["links"]:
-            writer.writerow([l["source"], labels.get(l["source"], ""), l["relation"],
-                             l["target"], labels.get(l["target"], "")])
+            writer.writerow([_csv_cell(value) for value in [l["source"], labels.get(l["source"], ""), l["relation"],
+                             l["target"], labels.get(l["target"], "")]])
     return _download(buf.getvalue(), "text/csv", f"subgraph_{scope}_{depth}hop_{table}.csv")

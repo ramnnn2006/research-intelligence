@@ -56,7 +56,7 @@ class TestNeo4jDatabase(unittest.TestCase):
             "authors": ["ResearchIQ Test Author A", "ResearchIQ Test Author B"],
             "topic": FIXTURE_TOPIC,
         })
-        cls._api_cm = TestClient(app)
+        cls._api_cm = TestClient(app, headers={"Authorization": "Bearer " + os.environ.get("API_AUTH_TOKEN", "")})
         cls.api = cls._api_cm.__enter__()
 
     @classmethod

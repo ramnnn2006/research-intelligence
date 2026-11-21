@@ -4,6 +4,7 @@ import Graph from '../components/Graph'
 import Spinner from '../components/Spinner'
 import { useToast } from '../components/Toast'
 import { toText, asArray } from '../utils/safe'
+import Ic from '../components/Ic'
 
 const METRICS = [
   { id: 'pagerank', label: 'PageRank (Prestige)', desc: 'Measures recursive influence: papers cited by other high-impact papers' },
@@ -87,6 +88,7 @@ export default function GraphAnalytics({ active = true }) {
     }
   }
 
+  const neo4jDown = !loading && !data && !!notice
   const topology = data?.topology || { total_nodes: 0, total_edges: 0, density: 0, num_communities: 0 }
   const papers = asArray(data?.influential_papers)
   const authors = asArray(data?.influential_authors)
@@ -105,7 +107,7 @@ export default function GraphAnalytics({ active = true }) {
           <div className="ri-title" style={{ fontSize: 18, display: 'flex', alignItems: 'center', gap: 8 }}>
             <span>Neo4j Graph Intelligence &amp; Centrality</span>
             <span style={{
-              background: 'rgba(30,79,160,0.10)', color: 'var(--accent)', border: '1px solid rgba(30,79,160,0.3)',
+              background: 'rgba(var(--accent-rgb),0.10)', color: 'var(--accent)', border: '1px solid rgba(var(--accent-rgb),0.3)',
               fontSize: 10, padding: '2px 7px', borderRadius: 10, fontWeight: 600
             }}>
               PageRank
@@ -120,15 +122,16 @@ export default function GraphAnalytics({ active = true }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <button
             onClick={handleSyncToNeo4j}
-            disabled={syncing}
+            disabled={syncing || neo4jDown}
+            title={neo4jDown ? 'Neo4j is offline, so metrics cannot be synced' : undefined}
             style={{
-              background: syncing ? 'var(--panel2)' : 'linear-gradient(135deg, #2E7D46 0%, #2E7D46 100%)',
-              color: '#fff', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6,
-              padding: '7px 14px', fontSize: 12, fontWeight: 600, cursor: syncing ? 'not-allowed' : 'pointer',
-              display: 'flex', alignItems: 'center', gap: 6, transition: 'all .15s', boxShadow: '0 2px 6px rgba(22,33,55,0.3)'
+              background: (syncing || neo4jDown) ? 'var(--panel2)' : 'var(--accent)',
+              color: (syncing || neo4jDown) ? 'var(--muted)' : 'var(--on-accent)', border: '1px solid var(--accent2)', borderRadius: 6,
+              padding: '7px 14px', fontSize: 12, fontWeight: 600, cursor: (syncing || neo4jDown) ? 'not-allowed' : 'pointer',
+              display: 'flex', alignItems: 'center', gap: 6, transition: 'background-color .15s, border-color .15s, color .15s, box-shadow .15s'
             }}
           >
-            {syncing ? <Spinner /> : '⚡'}
+            {syncing ? <Spinner /> : <Ic d="bolt" style={neo4jDown ? { opacity: 0.5 } : undefined} />}
             <span style={{ whiteSpace: 'nowrap' }}>{syncing ? 'Writing to Neo4j…' : 'Sync Metrics to Neo4j'}</span>
           </button>
         </div>
@@ -140,27 +143,27 @@ export default function GraphAnalytics({ active = true }) {
         padding: '12px 20px', background: 'var(--panel2)', borderBottom: '1px solid var(--border)', flexShrink: 0
       }}>
         <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px' }}>
-          <div style={{ fontSize: 10, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.05em' }}>Total Papers (Nodes)</div>
-          <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--accent)', marginTop: 2 }}>
-            📄 {topology.total_nodes}
+          <div style={{ fontSize: 11, color: 'var(--muted)' }}>Total Papers (Nodes)</div>
+          <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--accent)', marginTop: 2 }}>
+            <Ic d="doc" /> {neo4jDown ? '\u2014' : topology.total_nodes}
           </div>
         </div>
         <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px' }}>
-          <div style={{ fontSize: 10, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.05em' }}>Citation Links (Edges)</div>
-          <div style={{ fontSize: 18, fontWeight: 700, color: '#6B3FA0', marginTop: 2 }}>
-            🔗 {topology.total_edges}
+          <div style={{ fontSize: 11, color: 'var(--muted)' }}>Citation Links (Edges)</div>
+          <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--text)', marginTop: 2 }}>
+            <Ic d="link" /> {neo4jDown ? '\u2014' : topology.total_edges}
           </div>
         </div>
         <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px' }}>
-          <div style={{ fontSize: 10, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.05em' }}>Research Clusters</div>
-          <div style={{ fontSize: 18, fontWeight: 700, color: '#B08A00', marginTop: 2 }}>
-            🧬 {topology.num_communities} Communities
+          <div style={{ fontSize: 11, color: 'var(--muted)' }}>Research Clusters</div>
+          <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--text)', marginTop: 2 }}>
+            <Ic d="rag" /> {neo4jDown ? '\u2014' : `${topology.num_communities} Communities`}
           </div>
         </div>
         <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px' }}>
-          <div style={{ fontSize: 10, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.05em' }}>Network Density</div>
-          <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--green)', marginTop: 2 }}>
-            🌐 {topology.density}
+          <div style={{ fontSize: 11, color: 'var(--muted)' }}>Network Density</div>
+          <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--text)', marginTop: 2 }}>
+            <Ic d="web" /> {neo4jDown ? '\u2014' : topology.density}
           </div>
         </div>
       </div>
@@ -179,10 +182,10 @@ export default function GraphAnalytics({ active = true }) {
               title={m.desc}
               style={{
                 background: metric === m.id ? 'var(--accent)' : 'var(--panel2)',
-                color: metric === m.id ? '#FFFFFF' : 'var(--muted2)',
+                color: metric === m.id ? 'var(--on-accent)' : 'var(--muted2)',
                 border: `1px solid ${metric === m.id ? 'var(--accent)' : 'var(--border)'}`,
                 borderRadius: 20, padding: '5px 12px', fontSize: 11, fontWeight: 600,
-                cursor: 'pointer', transition: 'all .15s'
+                cursor: 'pointer', transition: 'background-color .15s, border-color .15s, color .15s, box-shadow .15s'
               }}
             >
               {m.label}
@@ -192,20 +195,20 @@ export default function GraphAnalytics({ active = true }) {
 
         {/* Filter Input */}
         <div className="ri-graph-filter" style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-          <input
+          <input name="topic" autoComplete="off"
             value={topic}
             onChange={e => setTopic(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && fetchAnalytics()}
-            placeholder="Filter by topic (leave blank for all)..." aria-label="Filter by topic (leave blank for all)"
+            placeholder="Filter by topic (leave blank for all)…" aria-label="Filter by topic (leave blank for all)"
             style={{
               background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6,
-              color: 'var(--text)', padding: '5px 10px', fontSize: 11, width: 220, minWidth: 0, outline: 'none'
+              color: 'var(--text)', padding: '5px 10px', fontSize: 11, width: 220, minWidth: 0
             }}
           />
           <button
             onClick={() => fetchAnalytics()}
             style={{
-              background: 'var(--accent)', color: '#FFFFFF', border: 'none',
+              background: 'var(--accent)', color: 'var(--on-accent)', border: 'none',
               borderRadius: 6, padding: '5px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer'
             }}
           >
@@ -228,7 +231,7 @@ export default function GraphAnalytics({ active = true }) {
         <div className="ri-graph-pane"  style={{ flex: '1 1 58%', display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--border)', background: 'var(--bg)', padding: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
             <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span>🕸️ Citation Topology & Prestige Map</span>
+              <span><Ic d="web" /> Citation Topology & Prestige Map</span>
               <span style={{ fontSize: 10, color: 'var(--muted)' }}>(Node size ∝ PageRank)</span>
             </span>
             <span style={{ fontSize: 10, color: 'var(--muted2)' }}>Hover a node for details, click to open it</span>
@@ -263,18 +266,18 @@ export default function GraphAnalytics({ active = true }) {
                 borderBottom: leaderboardTab === 'papers' ? '2px solid var(--accent)' : 'none'
               }}
             >
-              📄 Top Influential Papers ({papers.length})
+              <Ic d="doc" /> Top Influential Papers ({neo4jDown ? '\u2014' : papers.length})
             </button>
             <button
               onClick={() => setLeaderboardTab('authors')}
               style={{
                 flex: 1, padding: '10px 14px', fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer',
                 background: leaderboardTab === 'authors' ? 'var(--panel)' : 'transparent',
-                color: leaderboardTab === 'authors' ? '#7A5C00' : 'var(--muted)',
-                borderBottom: leaderboardTab === 'authors' ? '2px solid #B08A00' : 'none'
+                color: leaderboardTab === 'authors' ? 'var(--ochre)' : 'var(--muted)',
+                borderBottom: leaderboardTab === 'authors' ? '2px solid var(--orange)' : 'none'
               }}
             >
-              👨‍🔬 Influential Researchers ({authors.length})
+              <Ic d="users" /> Influential Researchers ({neo4jDown ? '\u2014' : authors.length})
             </button>
           </div>
 
@@ -293,17 +296,17 @@ export default function GraphAnalytics({ active = true }) {
                     onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedPaper(p) } }}
                     onClick={() => setSelectedPaper(p)}
                     style={{
-                      background: isSelected ? 'rgba(30,79,160,0.08)' : 'var(--panel2)',
+                      background: isSelected ? 'rgba(var(--accent-rgb),0.08)' : 'var(--panel2)',
                       border: `1px solid ${isSelected ? 'var(--accent)' : 'var(--border)'}`,
-                      borderRadius: 8, padding: 10, cursor: 'pointer', transition: 'all .15s'
+                      borderRadius: 8, padding: 10, cursor: 'pointer', transition: 'background-color .15s, border-color .15s, color .15s, box-shadow .15s'
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <span style={{
                           background: idx < 3 ? 'var(--accent)' : 'var(--border)',
-                          color: idx < 3 ? '#FFFFFF' : 'var(--muted)',
-                          fontSize: 10, fontWeight: 700, borderRadius: 4, padding: '1px 5px', minWidth: 22, textAlign: 'center'
+                          color: idx < 3 ? 'var(--on-accent)' : 'var(--muted)',
+                          fontSize: 10, fontWeight: 600, borderRadius: 4, padding: '1px 5px', minWidth: 22, textAlign: 'center'
                         }}>
                           #{idx + 1}
                         </span>
@@ -316,8 +319,8 @@ export default function GraphAnalytics({ active = true }) {
                       </div>
 
                       <span style={{
-                        background: 'rgba(30,79,160,0.15)', color: 'var(--accent)',
-                        fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4, whiteSpace: 'nowrap'
+                        background: 'rgba(var(--accent-rgb),0.15)', color: 'var(--accent)',
+                        fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4, whiteSpace: 'nowrap'
                       }}>
                         {score.toFixed(4)}
                       </span>
@@ -330,11 +333,11 @@ export default function GraphAnalytics({ active = true }) {
 
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 10, color: 'var(--muted)' }}>
                       <span>
-                        {p.year ? `📅 ${p.year} • ` : ''}
-                        👥 {p.authors?.slice(0, 2).join(', ') || 'Various'}{p.authors?.length > 2 ? ' et al.' : ''}
+                        {p.year ? <><Ic d="cal" /> {p.year} • </> : ''}
+                        <Ic d="users" /> {p.authors?.slice(0, 2).join(', ') || 'Various'}{p.authors?.length > 2 ? ' et al.' : ''}
                       </span>
                       <span>
-                        🧬 Cluster {p.community}
+                        <Ic d="rag" /> Cluster {p.community}
                       </span>
                     </div>
                   </div>
@@ -355,9 +358,9 @@ export default function GraphAnalytics({ active = true }) {
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <span style={{
-                          background: idx < 3 ? '#B08A00' : 'var(--border)',
-                          color: idx < 3 ? '#FFFFFF' : 'var(--muted)',
-                          fontSize: 10, fontWeight: 700, borderRadius: 4, padding: '1px 5px', minWidth: 22, textAlign: 'center'
+                          background: idx < 3 ? 'var(--orange)' : 'var(--border)',
+                          color: idx < 3 ? 'var(--on-accent)' : 'var(--muted)',
+                          fontSize: 10, fontWeight: 600, borderRadius: 4, padding: '1px 5px', minWidth: 22, textAlign: 'center'
                         }}>
                           #{idx + 1}
                         </span>
@@ -365,17 +368,17 @@ export default function GraphAnalytics({ active = true }) {
                           {a.name}
                         </span>
                       </div>
-                      <span style={{ background: 'rgba(176,138,0,0.15)', color: '#B08A00', fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4 }}>
+                      <span style={{ background: 'rgba(var(--ochre-rgb),0.15)', color: 'var(--orange)', fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4 }}>
                         Prestige: {num(a.score).toFixed(4)}
                       </span>
                     </div>
 
                     <div style={{ width: '100%', height: 4, background: 'var(--border)', borderRadius: 2, margin: '6px 0', overflow: 'hidden' }}>
-                      <div style={{ width: `${pct}%`, height: '100%', background: '#B08A00', borderRadius: 2 }} />
+                      <div style={{ width: `${pct}%`, height: '100%', background: 'var(--orange)', borderRadius: 2 }} />
                     </div>
 
                     <div style={{ fontSize: 10, color: 'var(--muted)', display: 'flex', justifyContent: 'space-between' }}>
-                      <span>📚 {a.papers_count} paper{a.papers_count > 1 ? 's' : ''} in knowledge graph</span>
+                      <span><Ic d="books" /> {a.papers_count} paper{a.papers_count > 1 ? 's' : ''} in knowledge graph</span>
                       <span style={{ maxWidth: 170, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={a.top_paper}>
                         Top: {a.top_paper}
                       </span>

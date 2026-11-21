@@ -84,7 +84,7 @@ class TestMongoDocumentStore(unittest.TestCase):
             self.assertEqual(report["content"], self.report_content)
 
     def test_04_status_endpoints(self):
-        with TestClient(app) as api:
+        with TestClient(app, headers={"Authorization": "Bearer " + os.environ.get("API_AUTH_TOKEN", "")}) as api:
             status = api.get("/api/nosql/status").json()
             self.assertTrue(status["graph_store"]["connected"])
             self.assertTrue(status["document_store"]["connected"])
@@ -131,7 +131,7 @@ class TestHuggingFaceKnowledgeGraph(unittest.TestCase):
              mock.patch.object(r.scholar, "search", mock.AsyncMock(return_value=[])), \
              mock.patch.object(r.github, "search", mock.AsyncMock(return_value=[])), \
              mock.patch.object(r.hf, "search_all", mock.AsyncMock(return_value={"models": [HF_MODEL], "datasets": [HF_DATASET]})), \
-             TestClient(app) as api:
+             TestClient(app, headers={"Authorization": "Bearer " + os.environ.get("API_AUTH_TOKEN", "")}) as api:
             return api.post("/api/search", json={"query": HF_TOPIC, "max_results": 3})
 
     def test_01_search_returns_and_stores_models_and_datasets(self):
@@ -155,7 +155,7 @@ class TestHuggingFaceKnowledgeGraph(unittest.TestCase):
             "MATCH (t:Topic {name: $t}) RETURN COUNT { (t)-[:HAS_MODEL]->() } AS models, "
             "COUNT { (t)-[:USES_DATASET]->() } AS datasets, COUNT { (t)<-[:BELONGS_TO]-() } AS papers", {"t": HF_TOPIC})
         self.assertEqual(counts, [{"models": 1, "datasets": 1, "papers": 1}])
-        with TestClient(app) as api:
+        with TestClient(app, headers={"Authorization": "Bearer " + os.environ.get("API_AUTH_TOKEN", "")}) as api:
             self.assertEqual(api.get("/api/neo4j/graph/" + HF_TOPIC).status_code, 200)
             self.assertEqual(api.get("/api/neo4j/graph/ResearchIQ Test No Such Topic").status_code, 404)
 
@@ -203,7 +203,7 @@ class TestCitationNetwork(unittest.TestCase):
         self.assertEqual(rows, [{"n": 0}])
 
     def test_04_multihop_route(self):
-        with TestClient(app) as api:
+        with TestClient(app, headers={"Authorization": "Bearer " + os.environ.get("API_AUTH_TOKEN", "")}) as api:
             res = api.post("/api/neo4j/citations/multihop", json={"title": "researchiq test citation root", "hops": 2})
             self.assertEqual(res.status_code, 200)
             body = res.json()
@@ -252,7 +252,7 @@ class TestPdfRag(unittest.TestCase):
         return api.post("/api/pdf/upload", files={"file": (name, data, "application/pdf")})
 
     def test_01_upload_dedupe_and_status(self):
-        with TestClient(app) as api:
+        with TestClient(app, headers={"Authorization": "Bearer " + os.environ.get("API_AUTH_TOKEN", "")}) as api:
             first = self._upload(api, self.PDF)
             self.assertEqual(first.status_code, 200, first.text)
             self.assertEqual(first.json()["info"]["pages"], 1)
@@ -265,7 +265,7 @@ class TestPdfRag(unittest.TestCase):
             self.assertEqual(api.delete("/api/pdf/clear").json()["stats"]["loaded"], 0)
 
     def test_02_rejects_bad_input(self):
-        with TestClient(app) as api:
+        with TestClient(app, headers={"Authorization": "Bearer " + os.environ.get("API_AUTH_TOKEN", "")}) as api:
             self.assertEqual(self._upload(api, self.PDF, "notes.txt").status_code, 400)
             self.assertEqual(self._upload(api, b"not a pdf at all").status_code, 400)
             with mock.patch.dict(os.environ, {"PDF_MAX_MB": "1"}):
@@ -275,7 +275,7 @@ class TestPdfRag(unittest.TestCase):
     def test_03_chat_answers_with_page_excerpts_and_maps_llm_errors(self):
         from app.api import routes
         from app.agents.research_agent import LLMError
-        with TestClient(app) as api:
+        with TestClient(app, headers={"Authorization": "Bearer " + os.environ.get("API_AUTH_TOKEN", "")}) as api:
             self._upload(api, self.PDF)
             with mock.patch.object(routes, "answer_pdf_question", mock.AsyncMock(return_value="Masked attention [Page 1]")):
                 res = api.post("/api/pdf/chat", json={"question": "how does graph attention work"})
@@ -288,7 +288,7 @@ class TestPdfRag(unittest.TestCase):
 
 
 class TestGraphAnalytics(unittest.TestCase):
-    """NetworkX centrality over the snapshot loaded from scripts/export_cypher.cql."""
+    """NetworkX centrality over a self-contained disposable citation fixture."""
 
     @classmethod
     def setUpClass(cls):
@@ -296,14 +296,28 @@ class TestGraphAnalytics(unittest.TestCase):
         cls.client = get_neo4j_client()
         if not cls.client.connect():
             raise unittest.SkipTest("Neo4j is not reachable")
-        rows = cls.client.execute_read(
-            "MATCH (t:Topic)<-[:BELONGS_TO]-(:Paper)-[:CITES]-(:Paper) RETURN t.name AS name, count(*) AS n ORDER BY n DESC LIMIT 1")
-        if not rows:
-            raise unittest.SkipTest("No topic with citation edges; load scripts/export_cypher.cql first")
-        cls.topic = rows[0]["name"]
+        cls.topic = "ResearchIQ Test Analytics Isolated"
+        cls.client.execute_write("""
+            MERGE (t:Topic {name: $topic})
+            WITH t
+            UNWIND ['a', 'b', 'c', 'd'] AS key
+            MERGE (p:Paper {id: 'test_api_analytics_' + key})
+            SET p.title = 'Analytics fixture ' + key, p.year = '2024'
+            MERGE (p)-[:BELONGS_TO]->(t)
+        """, {"topic": cls.topic})
+        cls.client.execute_write("""
+            MATCH (a:Paper {id:'test_api_analytics_a'}), (b:Paper {id:'test_api_analytics_b'}),
+                  (c:Paper {id:'test_api_analytics_c'}), (d:Paper {id:'test_api_analytics_d'})
+            MERGE (b)-[:CITES]->(a) MERGE (c)-[:CITES]->(a) MERGE (d)-[:CITES]->(b)
+        """)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.client.execute_write("MATCH (p:Paper) WHERE p.id STARTS WITH 'test_api_analytics_' DETACH DELETE p")
+        cls.client.execute_write("MATCH (t:Topic {name:$topic}) DETACH DELETE t", {"topic":cls.topic})
 
     def test_01_global_scores_are_differentiated(self):
-        with TestClient(app) as api:
+        with TestClient(app, headers={"Authorization": "Bearer " + os.environ.get("API_AUTH_TOKEN", "")}) as api:
             body = api.get("/api/graph/analytics", params={"metric": "pagerank", "limit": 10}).json()
         self.assertTrue(body["success"], body.get("message"))
         papers = body["influential_papers"]
@@ -314,7 +328,7 @@ class TestGraphAnalytics(unittest.TestCase):
         self.assertEqual(body["graph"]["links"], body["graph"]["edges"])
 
     def test_02_topic_scope_is_case_insensitive_and_unknown_topic_fails_cleanly(self):
-        with TestClient(app) as api:
+        with TestClient(app, headers={"Authorization": "Bearer " + os.environ.get("API_AUTH_TOKEN", "")}) as api:
             body = api.get("/api/graph/analytics", params={"topic": self.topic.upper(), "metric": "betweenness"}).json()
             self.assertTrue(body["success"], body.get("message"))
             self.assertTrue(any(p.get("in_topic") for p in body["influential_papers"]))
@@ -325,7 +339,7 @@ class TestGraphAnalytics(unittest.TestCase):
 
     def test_03_sync_writes_nx_properties_without_touching_cypher_pagerank(self):
         before = self.client.execute_read("MATCH (p:Paper) RETURN collect([p.id, p.pagerank]) AS pr")[0]["pr"]
-        with TestClient(app) as api:
+        with TestClient(app, headers={"Authorization": "Bearer " + os.environ.get("API_AUTH_TOKEN", "")}) as api:
             res = api.post("/api/graph/sync_metrics").json()
         self.assertTrue(res["success"], res)
         self.assertGreater(res["nodes_updated"], 0)

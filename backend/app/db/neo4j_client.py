@@ -54,7 +54,7 @@ class Neo4jClient:
             return
         self.uri: str = os.getenv("NEO4J_URI", "bolt://localhost:7687")
         self.user: str = os.getenv("NEO4J_USER", "neo4j")
-        self.password: str = os.getenv("NEO4J_PASSWORD", "research123")
+        self.password: str = os.getenv("NEO4J_PASSWORD", "")
         self.database: str = os.getenv("NEO4J_DATABASE", "neo4j")
         self._driver: Optional[Any] = None
         self._is_connected: bool = False
@@ -93,6 +93,10 @@ class Neo4jClient:
         answered a connectivity check. Failed attempts are throttled for
         RECONNECT_BACKOFF_SECONDS.
         """
+        if len(self.password) < 16 or self.password.lower() in {"research123", "neo4j", "password", "changeme"}:
+            self._is_connected = False
+            logger.warning("Neo4j disabled: configure a private non-default NEO4J_PASSWORD of at least 16 characters.")
+            return False
         lib = _load_driver()
         if lib is None:
             self._is_connected = False

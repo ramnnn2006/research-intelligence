@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.api.routes import router
+from app.api.security import protect_api, allowed_origins
 from app.db.database import init_db
 from app.db.neo4j_client import close_neo4j_client
 from app.db import knowledge_graph, mongo_client
@@ -31,9 +32,8 @@ async def lifespan(app: FastAPI):
 DEFAULT_CORS_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173"
 
 def _cors_origins() -> list:
-    """Comma-separated CORS_ORIGINS; the API has unauthenticated write endpoints, so no wildcard by default."""
-    raw = os.getenv("CORS_ORIGINS", "").strip() or DEFAULT_CORS_ORIGINS
-    return [o.strip().rstrip("/") for o in raw.split(",") if o.strip()]
+    """Explicit browser origins for CORS and authenticated mutation CSRF checks."""
+    return allowed_origins()
 
 app = FastAPI(title="Research Intelligence Platform (Neo4j Graph Powered)", lifespan=lifespan)
 app.add_middleware(
@@ -44,6 +44,7 @@ app.add_middleware(
 )
 # graph payloads and the JS bundle are large and repetitive; gzip them over the wire
 app.add_middleware(GZipMiddleware, minimum_size=1000)
+app.middleware("http")(protect_api)
 app.include_router(router)
 
 @app.get("/api/db/health")

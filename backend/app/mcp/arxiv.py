@@ -3,7 +3,7 @@ import aiohttp, xml.etree.ElementTree as ET
 NS = "{http://www.w3.org/2005/Atom}"
 
 class ArxivMCP:
-    BASE = "http://export.arxiv.org/api/query"
+    BASE = "https://export.arxiv.org/api/query"
 
     async def search(self, query: str, max_results: int = 10) -> list:
         params = {"search_query": f"all:{query}", "start": 0,

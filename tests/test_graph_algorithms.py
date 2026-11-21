@@ -53,7 +53,7 @@ class TestGraphAlgorithms(unittest.TestCase):
         init_neo4j_schema()
         cls.client.execute_write(FIXTURE)
         # entering the context runs the app lifespan, like a real server start
-        cls._api_cm = TestClient(app)
+        cls._api_cm = TestClient(app, headers={"Authorization": "Bearer " + os.environ.get("API_AUTH_TOKEN", "")})
         cls.api = cls._api_cm.__enter__()
 
     @classmethod
