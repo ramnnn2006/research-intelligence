@@ -7,20 +7,11 @@ import ErrorNote from '../components/ErrorNote'
 import { DocSkeleton } from '../components/Skeleton'
 import { useToast, useNotifyDone } from '../components/Toast'
 import { toText } from '../utils/safe'
+import Markdown from '../components/Markdown'
 
 function Md({ text }) {
   if (!text) return null
-  const html = text
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/^### (.+)$/gm, '<h4 style="color:var(--accent);margin:12px 0 5px;font-size:14px">$1</h4>')
-    .replace(/^## (.+)$/gm, '<h3 style="color:var(--accent);margin:14px 0 6px;font-size:15px">$1</h3>')
-    .replace(/^- (.+)$/gm, '<li style="margin:3px 0">$1</li>')
-    .replace(/^\d+\. (.+)$/gm, '<li style="margin:3px 0">$1</li>')
-    .replace(/(<li[^>]*>[\s\S]*?<\/li>)+/g, s => `<ul style="padding-left:18px;margin:6px 0">${s}</ul>`)
-    .replace(/\n\n/g, '</p><p style="margin:8px 0">').replace(/\n/g, '<br/>')
-  return <div style={{ lineHeight: 1.8, color: 'var(--muted)', fontSize: 13 }} dangerouslySetInnerHTML={{ __html: '<p style="margin:0">' + html + '</p>' }} />
+  return <Markdown text={text} style={{ lineHeight: 1.8, color: 'var(--muted)', fontSize: 13 }} />
 }
 
 export default function Review() {

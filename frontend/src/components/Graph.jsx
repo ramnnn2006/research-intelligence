@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import * as d3 from 'd3'
-import { escapeHtml, safeHttpUrl } from '../utils/safe'
+import { safeHttpUrl } from '../utils/safe'
 
 const COLORS = {
   topic: 'var(--accent)', paper: 'var(--muted)', repo: 'var(--purple)',
@@ -156,20 +156,25 @@ export default function Graph({ data, height = 420, depth, onDepthChange }) {
 
     nodeEl
       .on('mouseover', (event, d) => {
-        // labels, years and counts come from external APIs, so escape every value
         const lbl = String(d.label || d.id || '').replace(/^TOPIC:\s*/i, '')
-        const color = COLORS[d.type] || 'var(--muted)'
-        let html = `<span style="color:${color};font-weight:600">${escapeHtml(String(d.type || '').toUpperCase())}</span><br/>`
-        html += escapeHtml(`${lbl.substring(0, 80)}${lbl.length > 80 ? '…' : ''}`)
-        if (d.year) html += `<br/><span style="color:var(--muted)">Year: ${escapeHtml(d.year)}</span>`
-        if (d.citations) html += `<br/><span style="color:var(--muted)">Citations: ${escapeHtml(d.citations.toLocaleString())}</span>`
-        if (d.stars) html += `<br/><span style="color:var(--orange)">★ ${escapeHtml(d.stars.toLocaleString())}</span>`
-        if (d.pagerank != null) html += `<br/><span style="color:var(--accent)">PageRank: ${escapeHtml(d.pagerank)}</span>`
-        if (d.betweenness != null) html += `<br/><span style="color:var(--purple)">Betweenness: ${escapeHtml(d.betweenness)}</span>`
-        if (d.community != null) html += `<br/><span style="color:var(--orange)">Cluster: ${escapeHtml(d.community)}</span>`
-        if (d.is_top_influential) html += `<br/><span style="color:var(--text)">Top influential</span>`
-        if (d.seed) html += `<br/><span style="color:var(--green)">Seed paper</span>`
-        tip.html(html)
+        const rows = [
+          [COLORS[d.type] || 'var(--muted)', String(d.type || '').toUpperCase(), 600],
+          [null, `${lbl.substring(0, 80)}${lbl.length > 80 ? '…' : ''}`],
+          d.year && ['var(--muted)', `Year: ${d.year}`],
+          d.citations && ['var(--muted)', `Citations: ${d.citations.toLocaleString()}`],
+          d.stars && ['var(--orange)', `★ ${d.stars.toLocaleString()}`],
+          d.pagerank != null && ['var(--accent)', `PageRank: ${d.pagerank}`],
+          d.betweenness != null && ['var(--purple)', `Betweenness: ${d.betweenness}`],
+          d.community != null && ['var(--orange)', `Cluster: ${d.community}`],
+          d.is_top_influential && ['var(--text)', 'Top influential'],
+          d.seed && ['var(--green)', 'Seed paper'],
+        ].filter(Boolean)
+        tip.selectAll('*').remove()
+        rows.forEach(([color, text, weight], i) => {
+          if (i) tip.append('br')
+          tip.append('span').style('color', color).style('font-weight', weight).text(text)
+        })
+        tip
           .style('opacity', '1')
           .style('left', (event.offsetX + 14) + 'px')
           .style('top', (event.offsetY - 8) + 'px')
