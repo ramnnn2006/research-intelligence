@@ -1,0 +1,27 @@
+# ResearchIQ
+
+> ResearchIQ is a single-owner research intelligence app. A FastAPI backend pulls papers and repositories from public sources (arXiv, Semantic Scholar, GitHub, Hugging Face, CrossRef, PubMed) over plain HTTP connectors, stores them as a graph in Neo4j with a MongoDB mirror, and uses a Groq-hosted LLM for reviews, surveys, gaps, roadmaps, comparisons and chat. A React and Vite frontend sits on top. The API is private: every /api route requires the owner's token, and there is no public API or hosted docs site.
+
+Notes for agents working in this repository:
+- The connectors in backend/app/mcp/ are ordinary HTTP clients and do not use the Model Context Protocol.
+- Blocking Neo4j, Mongo and PDF-store calls must not run directly in async code; wrap them with run_in_threadpool. A test enforces this.
+- Untrusted text must never become an HTML string in the frontend; use JSX, d3 .text() or the Markdown component. ESLint enforces this.
+- Paper ids go through canonical_paper_id in backend/app/db/ids.py so one paper is one node.
+
+## Docs
+
+- [README](https://github.com/ramnnn2006/research-intelligence/blob/main/README.md): features, architecture, Neo4j data model, setup and running the app
+
+## Code
+
+- [API routes](https://github.com/ramnnn2006/research-intelligence/blob/main/backend/app/api/routes.py): HTTP endpoints
+- [API access control](https://github.com/ramnnn2006/research-intelligence/blob/main/backend/app/api/security.py): single-owner token authentication
+- [LLM agent](https://github.com/ramnnn2006/research-intelligence/blob/main/backend/app/agents/research_agent.py): prompts, JSON parsing and the default Groq model
+- [Source connectors](https://github.com/ramnnn2006/research-intelligence/tree/main/backend/app/mcp): arXiv, Semantic Scholar, GitHub, Hugging Face, CrossRef, PubMed
+- [Database layer](https://github.com/ramnnn2006/research-intelligence/tree/main/backend/app/db): Neo4j, MongoDB, paper id normalization
+- [Frontend](https://github.com/ramnnn2006/research-intelligence/tree/main/frontend/src): React pages and components
+
+## Tests and checks
+
+- [Backend tests](https://github.com/ramnnn2006/research-intelligence/tree/main/tests): pytest against real Neo4j and MongoDB
+- [CI workflow](https://github.com/ramnnn2006/research-intelligence/blob/main/.github/workflows/ci.yml): pytest with Neo4j and MongoDB services, frontend lint, tests and build

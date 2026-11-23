@@ -1,18 +1,17 @@
-# 🔬 ResearchIQ: MCP-Powered Research Intelligence Platform with Neo4j
+# 🔬 ResearchIQ: Research Intelligence Platform with Neo4j
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue)
 ![FastAPI](https://img.shields.io/badge/FastAPI-Backend-green)
 ![React](https://img.shields.io/badge/React-Frontend-61DAFB)
-![Groq](https://img.shields.io/badge/Groq-Llama3-purple)
-![MCP](https://img.shields.io/badge/MCP-Model%20Context%20Protocol-red)
+![Groq](https://img.shields.io/badge/Groq-LLM-purple)
 ![NetworkX](https://img.shields.io/badge/NetworkX-KnowledgeGraph-orange)
 ![Neo4j](https://img.shields.io/badge/Neo4j-NoSQL%20Graph%20Database-008CC1)
 
-ResearchIQ is a MCP-powered Research Intelligence Platform that enables researchers, students, and developers to discover, analyze, compare, and understand academic literature using AI and native **Neo4j NoSQL Graph Database** persistence.
+ResearchIQ is a Research Intelligence Platform that enables researchers, students, and developers to discover, analyze, compare, and understand academic literature using AI and native **Neo4j NoSQL Graph Database** persistence.
 
-The platform leverages the **Model Context Protocol (MCP)** to connect Large Language Models with external research systems such as **ArXiv**, **Semantic Scholar**, **CrossRef**, **PubMed**, and **GitHub**, allowing the AI agent to retrieve real-time research knowledge before generating insights.
+The platform connects Large Language Models to external research systems through plain HTTP source connectors (`backend/app/mcp/`, which do not use the Model Context Protocol) for **ArXiv**, **Semantic Scholar**, **CrossRef**, **PubMed**, and **GitHub**, so the AI agent can retrieve live research knowledge before generating insights.
 
-By combining MCP servers, Retrieval-Augmented Generation (RAG), Knowledge Graphs, Groq-powered LLMs, and a native **Neo4j Graph Database**, ResearchIQ transforms scattered research information into actionable, interconnected graph intelligence through a single unified interface.
+By combining source connectors, Retrieval-Augmented Generation (RAG), Knowledge Graphs, Groq-powered LLMs, and a native **Neo4j Graph Database**, ResearchIQ transforms scattered research information into actionable, interconnected graph intelligence through a single unified interface.
 
 ---
 
@@ -38,19 +37,19 @@ Features:
 
 ---
 
-### 🔌 MCP-Powered Tool Calling
+### 🔌 Source Connectors
 
-ResearchIQ uses MCP servers to expose external research systems as AI-accessible tools.
+ResearchIQ fetches papers and repositories from external research APIs and hands the results to the AI agent as context.
 
-Connected MCP Servers:
+Connected sources:
 
-| MCP Server           | Purpose                              |
+| Connector            | Purpose                              |
 | -------------------- | ------------------------------------ |
-| ArXiv MCP            | Research paper discovery             |
-| Semantic Scholar MCP | Citation and metadata retrieval      |
-| GitHub MCP           | Open-source implementation discovery |
-| CrossRef MCP         | DOI search and citation resolution   |
-| PubMed MCP           | Biomedical search via NCBI Entrez    |
+| ArXiv                | Research paper discovery             |
+| Semantic Scholar     | Citation and metadata retrieval      |
+| GitHub               | Open-source implementation discovery |
+| CrossRef             | DOI search and citation resolution   |
+| PubMed               | Biomedical search via NCBI Entrez    |
 
 When ArXiv and Semantic Scholar return too few papers for a review, survey or gap analysis, the agent tops the list up from CrossRef and PubMed.
 
@@ -90,7 +89,7 @@ Outputs include:
 * Limitations
 * Future Directions
 
-Powered by Groq Llama 3.3 70B.
+Powered by Groq (default `openai/gpt-oss-120b`, set `GROQ_MODEL` to change it).
 
 ---
 
@@ -197,7 +196,7 @@ The Analytics tab shows live node and relationship counts, heap usage, index adv
 ### 🍃 Polyglot NoSQL Persistence
 
 * **Neo4j** stores the graph: papers, authors, topics, citations, repositories, models and datasets
-* **MongoDB** stores documents: searches, reports, paper metadata and chat history
+* **MongoDB** stores documents: searches, reports and paper metadata
 * Both share the same ids, so a report saved while Neo4j is offline is still found by id later
 * `GET /api/nosql/status` reports both stores, and the header shows a live badge for each
 
@@ -230,13 +229,13 @@ The Graph Intel tab runs NetworkX PageRank, betweenness, degree centrality, HITS
 
 ---
 
-# 🎯 Why MCP?
+# 🎯 Why live sources?
 
 Traditional AI research assistants rely on static model knowledge and quickly become outdated.
 
-ResearchIQ adopts the **Model Context Protocol (MCP)**, enabling AI agents to interact with live research systems as external tools.
+ResearchIQ queries live research systems at request time and gives the AI agent those results to reason over.
 
-Benefits of MCP:
+Benefits:
 
 ✅ Real-time paper retrieval
 
@@ -245,8 +244,6 @@ Benefits of MCP:
 ✅ Citation-aware reasoning
 
 ✅ Repository discovery
-
-✅ Extensible architecture
 
 ✅ Reduced hallucinations
 
@@ -277,8 +274,8 @@ This makes ResearchIQ a true AI research copilot rather than a simple paper summ
               │                      │                │
               ▼                      ▼                ▼
    ┌────────────────────┐  ┌──────────────────┐  ┌───────────────────────┐
-   │ Research AI Agent  │  │   MCP Servers    │  │  Graph Layer (db/)    │
-   │ Groq Llama 3.3 70B │  │ ArXiv · Semantic │  │ crud.py    CRUD       │
+   │ Research AI Agent  │  │   Connectors     │  │  Graph Layer (db/)    │
+   │ Groq (GROQ_MODEL)  │  │ ArXiv · Semantic │  │ crud.py    CRUD       │
    │ reviews, surveys,  │  │ Scholar · GitHub │  │ queries.py 14 queries │
    │ gaps, chat         │  │ CrossRef · PubMed│  │  PageRank, Louvain,   │
    └─────────┬──────────┘  └────────┬─────────┘  │  TTL cache, APOC      │
@@ -345,7 +342,7 @@ Alongside Neo4j, the backend mirrors searches and reports to **MongoDB** (`db/mo
 Research Topic
       │
       ▼
-MCP-Based Paper Discovery
+Connector-Based Paper Discovery
 (ArXiv + Semantic Scholar + GitHub)
       │
       ▼
@@ -425,7 +422,6 @@ Interactive Insights & Graph Analytics
 | Language         | Python                              |
 | LLM              | Any Groq model (`GROQ_MODEL`, default `openai/gpt-oss-120b`) |
 | Inference        | Groq                                |
-| Protocol         | Model Context Protocol (MCP)        |
 | Knowledge Graph  | NetworkX                            |
 | Visualization    | D3.js                               |
 | Database (NoSQL) | **Neo4j Graph Database** (Cypher) and **MongoDB** (documents) |

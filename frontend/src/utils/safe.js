@@ -1,11 +1,5 @@
 // Small helpers for rendering data that comes from external APIs or the LLM.
 
-const HTML_ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }
-
-export function escapeHtml(value) {
-  return String(value ?? '').replace(/[&<>"']/g, c => HTML_ESCAPES[c])
-}
-
 // Returns the URL only when it is an absolute http(s) link, otherwise null.
 export function safeHttpUrl(value) {
   if (!value || typeof value !== 'string') return null
